@@ -1,7 +1,8 @@
 # StackFlow-Main-reupload
 
 # Unofficial Document
-# Cttro
+
+this library is used in Allusive, Zentra, Winds, etc -- they had a modified version of stackflow source 
 
 ```lua
 local LoaderLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/x-l-v/StackFlow-Main-reupload/refs/heads/main/src.lua"))();

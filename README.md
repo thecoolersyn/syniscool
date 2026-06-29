@@ -4,7 +4,7 @@
 # Cttro
 
 ```lua
-local LoaderLibrary = loadstring(game:HttpGet(""))();
+local LoaderLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/NotVoidd/StackFlow-Main-reupload/refs/heads/main/src.lua"))();
 local Library = LoaderLibrary();
 ```
 - For Roblox Game

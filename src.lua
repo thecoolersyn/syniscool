@@ -733,8 +733,8 @@ function Library:create_ui()
     Container.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Container.AnchorPoint = Vector2.new(0.5, 0.5)
     Container.Name = 'Container'
-    Container.BackgroundTransparency = 0.01
-    Container.BackgroundColor3 = Color3.fromRGB(7, 7, 8)
+    Container.BackgroundTransparency = 0.16
+    Container.BackgroundColor3 = Color3.fromRGB(8, 8, 10)
     Container.Position = UDim2.new(0.5, 0, 0.5, 0)
     Container.Size = UDim2.new(0, 0, 0, 0)
     Container.Active = true
@@ -743,9 +743,9 @@ function Library:create_ui()
 
     local ContainerGradient = Instance.new("UIGradient")
     ContainerGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(27, 27, 28)),
-        ColorSequenceKeypoint.new(0.10, Color3.fromRGB(13, 13, 14)),
-        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(5, 5, 6))
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(21, 21, 23)),
+        ColorSequenceKeypoint.new(0.14, Color3.fromRGB(12, 12, 14)),
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(6, 6, 8))
     }
     ContainerGradient.Rotation = 90
     ContainerGradient.Parent = Container
@@ -756,15 +756,19 @@ function Library:create_ui()
     SideBar.Parent = Container
     SideBar.Size = UDim2.new(0, 138, 1, 0)
     SideBar.Position = UDim2.new(0, 0, 0, 0)
-    SideBar.BackgroundTransparency = 0.45
-    SideBar.BackgroundColor3 = Color3.fromRGB(5, 5, 6)
+    SideBar.BackgroundTransparency = 0.24
+    SideBar.BackgroundColor3 = Color3.fromRGB(6, 6, 8)
+
+    local SideCorner = Instance.new("UICorner")
+    SideCorner.CornerRadius = UDim.new(0, 16)
+    SideCorner.Parent = SideBar
 
     -- Side gradient (inverted colors)
     local SideGradient = Instance.new("UIGradient")
     SideGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(13, 13, 14)),
-        ColorSequenceKeypoint.new(0.72, Color3.fromRGB(6, 6, 7)),
-        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(4, 4, 5))
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(13, 13, 16)),
+        ColorSequenceKeypoint.new(0.72, Color3.fromRGB(7, 7, 9)),
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(6, 6, 8))
     }
     SideGradient.Rotation = 90
     SideGradient.Parent = SideBar
@@ -782,12 +786,12 @@ function Library:create_ui()
     CenterImage.ImageTransparency = 1
 
     local UICorner = Instance.new('UICorner')
-    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.CornerRadius = UDim.new(0, 16)
     UICorner.Parent = Container
     
     local UIStroke = Instance.new('UIStroke')
-    UIStroke.Color = Color3.fromRGB(42, 42, 45)
-    UIStroke.Transparency = 0.15
+    UIStroke.Color = Color3.fromRGB(62, 62, 68)
+    UIStroke.Transparency = 0.35
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Container
     
@@ -1302,7 +1306,7 @@ function TabManager:moduleparagraph(settings: any)
     local Module = Instance.new('Frame')
     Module.ClipsDescendants = true
     Module.BorderColor3 = Color3.fromRGB(0, 0, 0)
-    Module.BackgroundTransparency = 0.08
+    Module.BackgroundTransparency = 0.18
     Module.Position = UDim2.new(0.004115226212888956, 0, 0, 0)
     Module.Name = 'ModuleParagraph'
     Module.Size = UDim2.new(0, 218, 0, 70)
@@ -1320,7 +1324,7 @@ function TabManager:moduleparagraph(settings: any)
     
     local UIStroke = Instance.new('UIStroke')
     UIStroke.Color = Color3.fromRGB(48, 48, 52)
-    UIStroke.Transparency = 0.18
+    UIStroke.Transparency = 0.3
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Module
     
@@ -1387,7 +1391,7 @@ function TabManager:create_image(settings: any)
     local Module = Instance.new('Frame')
     Module.ClipsDescendants = true
     Module.BorderColor3 = Color3.fromRGB(0, 0, 0)
-    Module.BackgroundTransparency = 0.08
+    Module.BackgroundTransparency = 0.18
     Module.Position = UDim2.new(0.004, 0, 0, 0)
     Module.Name = 'ImageModule'
     Module.Size = UDim2.new(0, 218, 0, 140) 
@@ -1401,7 +1405,7 @@ function TabManager:create_image(settings: any)
     
     local UIStroke = Instance.new('UIStroke')
     UIStroke.Color = Color3.fromRGB(48, 48, 52)
-    UIStroke.Transparency = 0.18
+    UIStroke.Transparency = 0.3
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Module
     
@@ -1438,7 +1442,7 @@ end
             local Module = Instance.new('Frame')
             Module.ClipsDescendants = true
             Module.BorderColor3 = Color3.fromRGB(0, 0, 0)
-            Module.BackgroundTransparency = 0.08
+            Module.BackgroundTransparency = 0.18
             Module.Position = UDim2.new(0.004115226212888956, 0, 0, 0)
             Module.Name = 'Module'
             Module.Size = UDim2.new(0, 218, 0, 93)
@@ -1456,7 +1460,7 @@ end
             
             local UIStroke = Instance.new('UIStroke')
             UIStroke.Color = Color3.fromRGB(48, 48, 52)
-            UIStroke.Transparency = 0.18
+            UIStroke.Transparency = 0.3
             UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             UIStroke.Parent = Module
             

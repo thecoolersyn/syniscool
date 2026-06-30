@@ -330,12 +330,24 @@ local Config = setmetatable({
             warn('failed to load config', result)
         end
     
-        if not result then
+        if type(result) ~= "table" then
             result = {
                 _flags = {},
                 _keybinds = {},
                 _library = {}
             }
+        end
+
+        if type(result._flags) ~= "table" then
+            result._flags = {}
+        end
+
+        if type(result._keybinds) ~= "table" then
+            result._keybinds = {}
+        end
+
+        if type(result._library) ~= "table" then
+            result._library = {}
         end
     
         return result
@@ -663,6 +675,18 @@ end
 
 
 function Library:flag_type(flag: any, flag_type: any)
+    if type(Library._config) ~= "table" then
+        Library._config = {
+            _flags = {},
+            _keybinds = {},
+            _library = {}
+        }
+    end
+
+    if type(Library._config._flags) ~= "table" then
+        Library._config._flags = {}
+    end
+
     if not Library._config._flags[flag] then
         return
     end

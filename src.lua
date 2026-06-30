@@ -756,12 +756,8 @@ function Library:create_ui()
     SideBar.Parent = Container
     SideBar.Size = UDim2.new(0, 138, 1, 0)
     SideBar.Position = UDim2.new(0, 0, 0, 0)
-    SideBar.BackgroundTransparency = 0.24
+    SideBar.BackgroundTransparency = 1
     SideBar.BackgroundColor3 = Color3.fromRGB(6, 6, 8)
-
-    local SideCorner = Instance.new("UICorner")
-    SideCorner.CornerRadius = UDim.new(0, 16)
-    SideCorner.Parent = SideBar
 
     -- Side gradient (inverted colors)
     local SideGradient = Instance.new("UIGradient")

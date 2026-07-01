@@ -32,6 +32,7 @@ local IconSpriteRows = 2
 local IconSpriteColumns = 3
 local IconSpriteFrames = 5
 local IconSpriteFPS = 10
+local DefaultBackgroundMedia = nil
 
 tablein = tablein or table.insert
 
@@ -406,6 +407,16 @@ local function ResolveAssetId(asset)
 	return nil
 end
 
+local function Clamp01(value)
+	value = tonumber(value)
+
+	if not value then
+		return nil
+	end
+
+	return math.clamp(value, 0, 1)
+end
+
 local function UpdateUIAccentColor()
 	UIAccentColor = AccentToggle and AccentColor or DefaultAccentColor
 	return UIAccentColor
@@ -515,6 +526,11 @@ function Library.IconSprite(first, second, third, fourth, fifth, sixth, seventh,
 	return IconAsset
 end
 
+function Library.BackgroundMedia(first, second)
+	DefaultBackgroundMedia = ResolveMethodValue(first, second)
+	return DefaultBackgroundMedia
+end
+
 
 function Library.new(settings)
 	settings = type(settings) == "table" and settings or {}
@@ -535,12 +551,22 @@ function Library.new(settings)
 		Library.IconAnimated(settings.iconAnimated)
 	end
 
+	local customBackground = settings.BackgroundMedia or settings.backgroundMedia or settings.background_media or settings.Background or settings.background or DefaultBackgroundMedia
+
     local self = setmetatable({
         _loaded = false,
         _tab = 0,
     }, Library)
     
     self:create_ui()
+
+	if customBackground ~= nil then
+		task.defer(function()
+			if self.SetBackgroundMedia then
+				self:SetBackgroundMedia(customBackground)
+			end
+		end)
+	end
 
     return self
 end
@@ -750,6 +776,20 @@ function Library:create_ui()
     ContainerGradient.Rotation = 90
     ContainerGradient.Parent = Container
 
+    local BackgroundMediaHolder = Instance.new("Frame")
+    BackgroundMediaHolder.Name = "BackgroundMedia"
+    BackgroundMediaHolder.BackgroundTransparency = 1
+    BackgroundMediaHolder.ClipsDescendants = true
+    BackgroundMediaHolder.Visible = false
+    BackgroundMediaHolder.Size = UDim2.fromScale(1, 1)
+    BackgroundMediaHolder.Position = UDim2.fromScale(0, 0)
+    BackgroundMediaHolder.ZIndex = 1
+    BackgroundMediaHolder.Parent = Container
+
+    local BackgroundMediaCorner = Instance.new("UICorner")
+    BackgroundMediaCorner.CornerRadius = UDim.new(0, 16)
+    BackgroundMediaCorner.Parent = BackgroundMediaHolder
+
     -- Gradient side bar
     local SideBar = Instance.new("Frame")
     SideBar.Name = "GradientSide"
@@ -927,6 +967,195 @@ if IconAnimated then
 else
     Icon.Image = IconAsset
 end
+
+local BackgroundMediaToken = 0
+
+local function ResolveBackgroundMediaAsset(source, name)
+	source = ResolveAssetId(source)
+
+	if typeof(source) ~= "string" or source == "" then
+		return nil
+	end
+
+	if source:match("^https?://") and type(writefile) == "function" and type(getcustomasset) == "function" then
+		local mediaFolder = ConfigFolder .. "/BackgroundMedia"
+
+		if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder(mediaFolder) then
+			pcall(makefolder, mediaFolder)
+		end
+
+		local extension = source:match("%.([%w]+)%??[^/]*$") or "png"
+		extension = extension:lower()
+
+		if not extension:match("^[%w]+$") or #extension > 5 then
+			extension = "png"
+		end
+
+		local fileName = tostring(name or "background_media"):gsub("[^%w_%-]", "_")
+		local filePath = mediaFolder .. "/" .. fileName .. "." .. extension
+		local fileExists = type(isfile) == "function" and isfile(filePath)
+
+		if not fileExists then
+			local ok, data = pcall(function()
+				return game:HttpGet(source, true)
+			end)
+
+			if ok and data then
+				pcall(writefile, filePath, data)
+			end
+		end
+
+		if type(isfile) ~= "function" or isfile(filePath) then
+			local ok, customAsset = pcall(getcustomasset, filePath)
+
+			if ok and customAsset then
+				return customAsset
+			end
+		end
+	end
+
+	return source
+end
+
+local function ResolveScaleType(value)
+	if typeof(value) == "EnumItem" then
+		return value
+	end
+
+	if typeof(value) == "string" and Enum.ScaleType[value] then
+		return Enum.ScaleType[value]
+	end
+
+	return Enum.ScaleType.Crop
+end
+
+local function ClearBackgroundMedia()
+	BackgroundMediaToken += 1
+	BackgroundMediaHolder.Visible = false
+
+	for _, child in BackgroundMediaHolder:GetChildren() do
+		if child ~= BackgroundMediaCorner then
+			child:Destroy()
+		end
+	end
+end
+
+function self:ClearBackgroundMedia()
+	ClearBackgroundMedia()
+end
+
+function self:SetBackgroundMedia(mediaSettings)
+	if mediaSettings == nil or mediaSettings == false then
+		ClearBackgroundMedia()
+		return false
+	end
+
+	if typeof(mediaSettings) ~= "table" then
+		mediaSettings = {
+			Source = mediaSettings
+		}
+	end
+
+	if mediaSettings.Enabled == false or mediaSettings.enabled == false then
+		ClearBackgroundMedia()
+		return false
+	end
+
+	local mediaType = tostring(mediaSettings.Type or mediaSettings.type or mediaSettings.MediaType or mediaSettings.mediaType or mediaSettings.media_type or "image"):lower()
+
+	if mediaType == "none" or mediaType == "off" or mediaType == "clear" then
+		ClearBackgroundMedia()
+		return false
+	end
+
+	local source = mediaSettings.Source or mediaSettings.source or mediaSettings.Asset or mediaSettings.asset or mediaSettings.Url or mediaSettings.url or mediaSettings.Image or mediaSettings.image or mediaSettings.Video or mediaSettings.video
+	local asset = ResolveBackgroundMediaAsset(source, mediaSettings.SaveAs or mediaSettings.saveAs or mediaSettings.Name or mediaSettings.name)
+
+	if not asset then
+		ClearBackgroundMedia()
+		return false
+	end
+
+	ClearBackgroundMedia()
+	BackgroundMediaToken += 1
+
+	local token = BackgroundMediaToken
+	local opacity = Clamp01(mediaSettings.Opacity or mediaSettings.opacity)
+	opacity = opacity or 0.45
+
+	local media
+
+	if mediaType == "video" or mediaType == "mp4" or mediaType == "webm" then
+		media = Instance.new("VideoFrame")
+		media.Video = asset
+		media.Looped = mediaSettings.Looped ~= false and mediaSettings.looped ~= false
+		media.Volume = tonumber(mediaSettings.Volume or mediaSettings.volume) or 0
+		pcall(function()
+			media.Transparency = 1 - opacity
+		end)
+		pcall(function()
+			media:Play()
+		end)
+	else
+		media = Instance.new("ImageLabel")
+		media.Image = asset
+		media.ImageTransparency = 1 - opacity
+		media.ImageColor3 = mediaSettings.Color or mediaSettings.color or Color3.fromRGB(255, 255, 255)
+		media.ScaleType = ResolveScaleType(mediaSettings.ScaleType or mediaSettings.scaleType)
+
+		if mediaType == "gif" or mediaType == "sprite" then
+			local width = tonumber(mediaSettings.Width or mediaSettings.width)
+			local height = tonumber(mediaSettings.Height or mediaSettings.height)
+			local rows = tonumber(mediaSettings.Rows or mediaSettings.rows)
+			local columns = tonumber(mediaSettings.Columns or mediaSettings.columns)
+			local frames = tonumber(mediaSettings.Frames or mediaSettings.frames)
+			local fps = tonumber(mediaSettings.FPS or mediaSettings.fps)
+
+			if width and height and rows and columns and frames then
+				AnimateGif(media, width, height, rows, columns, frames, asset, fps)
+			end
+		end
+	end
+
+	media.Name = "Media"
+	media.BackgroundTransparency = 1
+	media.BorderSizePixel = 0
+	media.Size = UDim2.fromScale(1, 1)
+	media.Position = UDim2.fromScale(0, 0)
+	media.ZIndex = 1
+	media.Parent = BackgroundMediaHolder
+
+	if media:IsA("VideoFrame") then
+		pcall(function()
+			media.Playing = true
+		end)
+		pcall(function()
+			media:Play()
+		end)
+	end
+
+	local dimOpacity = Clamp01(mediaSettings.DimOpacity or mediaSettings.dimOpacity or mediaSettings.dim_opacity)
+
+	if dimOpacity and dimOpacity > 0 then
+		local dim = Instance.new("Frame")
+		dim.Name = "Dim"
+		dim.BackgroundColor3 = mediaSettings.DimColor or mediaSettings.dimColor or Color3.fromRGB(0, 0, 0)
+		dim.BackgroundTransparency = 1 - dimOpacity
+		dim.BorderSizePixel = 0
+		dim.Size = UDim2.fromScale(1, 1)
+		dim.Position = UDim2.fromScale(0, 0)
+		dim.ZIndex = 2
+		dim.Parent = BackgroundMediaHolder
+	end
+
+	BackgroundMediaHolder.Visible = token == BackgroundMediaToken
+	return true
+end
+
+self.set_background_media = self.SetBackgroundMedia
+self.clear_background_media = self.ClearBackgroundMedia
+self.SetBackgroundImage = self.SetBackgroundMedia
+self.set_background_image = self.SetBackgroundMedia
     
     local Divider = Instance.new('Frame')
     Divider.Name = 'Divider'
@@ -972,6 +1201,7 @@ end
     UIScale.Parent = Container    
     
     self._ui = Frostware
+    self._background_media_holder = BackgroundMediaHolder
 
     local function on_drag(input: InputObject, process: boolean)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
@@ -3137,4 +3367,3 @@ end
 return Library
       
        
-

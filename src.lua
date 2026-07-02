@@ -1141,6 +1141,8 @@ local function ClearBackgroundMedia()
 	pcall(function()
 		Container.BackgroundTransparency = 0.16
 		ContainerGradient.Enabled = true
+		SideBar.BackgroundTransparency = 1
+		SideGradient.Enabled = true
 	end)
 end
 
@@ -1264,6 +1266,8 @@ function self:SetBackgroundMedia(mediaSettings)
 		pcall(function()
 			Container.BackgroundTransparency = 1
 			ContainerGradient.Enabled = false
+			SideBar.BackgroundTransparency = 1
+			SideGradient.Enabled = false
 		end)
 	end
 

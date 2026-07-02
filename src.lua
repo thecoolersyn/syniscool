@@ -1136,6 +1136,12 @@ local function ClearBackgroundMedia()
 			child:Destroy()
 		end
 	end
+
+	-- Restore the container background when media is cleared
+	pcall(function()
+		Container.BackgroundTransparency = 0.16
+		ContainerGradient.Enabled = true
+	end)
 end
 
 function self:ClearBackgroundMedia()
@@ -1252,6 +1258,15 @@ function self:SetBackgroundMedia(mediaSettings)
 	end
 
 	BackgroundMediaHolder.Visible = token == BackgroundMediaToken
+
+	-- Make the container transparent so the background media shows through
+	if token == BackgroundMediaToken then
+		pcall(function()
+			Container.BackgroundTransparency = 1
+			ContainerGradient.Enabled = false
+		end)
+	end
+
 	return true
 end
 

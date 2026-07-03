@@ -1127,63 +1127,23 @@ local function ResolveScaleType(value)
 	return Enum.ScaleType.Crop
 end
 
-local ModuleBackgroundStore = {}
-
-local function ToggleModuleBackgrounds(transparent)
-	if not Container then return end
-	local handler = Container:FindFirstChild("Handler")
-	if not handler then return end
-	local sections = handler and handler:FindFirstChild("Sections")
-	if not sections then return end
-
-	if transparent then
-		local function collectModules(obj, depth)
-			if depth > 4 then return end
-			for _, child in ipairs(obj:GetChildren()) do
-				if child:IsA("Frame") and child.BackgroundTransparency < 1 then
-					table.insert(ModuleBackgroundStore, {
-						frame = child,
-						transparency = child.BackgroundTransparency,
-						color = child.BackgroundColor3
-					})
-					child.BackgroundTransparency = 0.55
-				end
-				if child:IsA("ScrollingFrame") and child.BackgroundTransparency < 1 then
-					table.insert(ModuleBackgroundStore, {
-						frame = child,
-						transparency = child.BackgroundTransparency,
-						color = child.BackgroundColor3
-					})
-					child.BackgroundTransparency = 0.55
-				end
-				collectModules(child, depth + 1)
-			end
-		end
-		for _, section in ipairs(sections:GetChildren()) do
-			collectModules(section, 0)
-		end
-	else
-		for _, stored in ipairs(ModuleBackgroundStore) do
-			if stored.frame and stored.frame.Parent then
-				stored.frame.BackgroundTransparency = stored.transparency
-				stored.frame.BackgroundColor3 = stored.color
-			end
-		end
-		ModuleBackgroundStore = {}
-	end
-end
-
 local function ClearBackgroundMedia()
 	BackgroundMediaToken += 1
 	BackgroundMediaHolder.Visible = false
-	Container.BackgroundTransparency = 0.16
-	ToggleModuleBackgrounds(false)
 
 	for _, child in BackgroundMediaHolder:GetChildren() do
 		if child ~= BackgroundMediaCorner then
 			child:Destroy()
 		end
 	end
+
+	-- Restore the container background when media is cleared
+	pcall(function()
+		Container.BackgroundTransparency = 0.16
+		ContainerGradient.Enabled = true
+		SideBar.BackgroundTransparency = 1
+		SideGradient.Enabled = true
+	end)
 end
 
 function self:ClearBackgroundMedia()
@@ -1236,7 +1196,7 @@ function self:SetBackgroundMedia(mediaSettings)
 
 	local media
 
-	if mediaType == "video" or mediaType == "mp4" or mediaType == "webm" or mediaType == "mov" then
+	if mediaType == "video" or mediaType == "mp4" or mediaType == "webm" then
 		media = Instance.new("VideoFrame")
 		media.Video = asset
 		media.Looped = mediaSettings.Looped ~= false and mediaSettings.looped ~= false
@@ -1253,7 +1213,6 @@ function self:SetBackgroundMedia(mediaSettings)
 		media.ImageTransparency = 1 - opacity
 		media.ImageColor3 = mediaSettings.Color or mediaSettings.color or Color3.fromRGB(255, 255, 255)
 		media.ScaleType = ResolveScaleType(mediaSettings.ScaleType or mediaSettings.scaleType)
-		media.ResampleMode = Enum.ResampleMode.Default
 
 		if mediaType == "gif" or mediaType == "sprite" then
 			local width = tonumber(mediaSettings.Width or mediaSettings.width)
@@ -1284,14 +1243,6 @@ function self:SetBackgroundMedia(mediaSettings)
 		pcall(function()
 			media:Play()
 		end)
-		task.spawn(function()
-			task.wait(0.5)
-			pcall(function()
-				if media and media.Visible then
-					media:Play()
-				end
-			end)
-		end)
 	end
 
 	local dimOpacity = Clamp01(mediaSettings.DimOpacity or mediaSettings.dimOpacity or mediaSettings.dim_opacity)
@@ -1310,9 +1261,14 @@ function self:SetBackgroundMedia(mediaSettings)
 
 	BackgroundMediaHolder.Visible = token == BackgroundMediaToken
 
+	-- Make the container transparent so the background media shows through
 	if token == BackgroundMediaToken then
-		Container.BackgroundTransparency = 1
-		ToggleModuleBackgrounds(true)
+		pcall(function()
+			Container.BackgroundTransparency = 1
+			ContainerGradient.Enabled = false
+			SideBar.BackgroundTransparency = 1
+			SideGradient.Enabled = false
+		end)
 	end
 
 	return true
@@ -3533,4 +3489,3 @@ end
 return Library
       
        
-

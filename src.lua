@@ -880,7 +880,6 @@ function Library:create_ui()
     Tabs.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Tabs.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Tabs.BorderSizePixel = 0
-    Tabs.CanvasSize = UDim2.new(0, 0, 0.5, 0)
     Tabs.Parent = Handler
     
     local UIListLayout = Instance.new('UIListLayout')
@@ -1612,7 +1611,6 @@ self.set_background_image = self.SetBackgroundMedia
         LeftSection.BorderColor3 = Color3.fromRGB(0, 0, 0)
         LeftSection.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         LeftSection.BorderSizePixel = 0
-        LeftSection.CanvasSize = UDim2.new(0, 0, 0.5, 0)
         LeftSection.Visible = false
         LeftSection.Parent = Sections
         
@@ -1624,6 +1622,7 @@ self.set_background_image = self.SetBackgroundMedia
         
         local UIPadding = Instance.new('UIPadding')
         UIPadding.PaddingTop = UDim.new(0, 1)
+        UIPadding.PaddingBottom = UDim.new(0, 20)
         UIPadding.Parent = LeftSection
 
         local RightSection = Instance.new('ScrollingFrame')
@@ -1639,7 +1638,6 @@ self.set_background_image = self.SetBackgroundMedia
         RightSection.BorderColor3 = Color3.fromRGB(0, 0, 0)
         RightSection.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         RightSection.BorderSizePixel = 0
-        RightSection.CanvasSize = UDim2.new(0, 0, 0.5, 0)
         RightSection.Visible = false
         RightSection.Parent = Sections
         
@@ -1651,6 +1649,7 @@ self.set_background_image = self.SetBackgroundMedia
         
         local UIPadding = Instance.new('UIPadding')
         UIPadding.PaddingTop = UDim.new(0, 1)
+        UIPadding.PaddingBottom = UDim.new(0, 20)
         UIPadding.Parent = RightSection
 
         self._tab += 1
@@ -3067,7 +3066,6 @@ end
                 Options.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 Options.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Options.BorderSizePixel = 0
-                Options.CanvasSize = UDim2.new(0, 0, 0.5, 0)
                 Options.Parent = Box
                 
                 local UIListLayout = Instance.new('UIListLayout')
@@ -3307,7 +3305,8 @@ end
                     local order = Dropdown.LayoutOrder
                     Options:Destroy();
                     Dropdown:Destroy();
-                    value.OrderValue = order
+                    ModuleManager._size -= 44
+                    LayoutOrderModule = order - 1
                     ModuleManager._multiplier -= CurrentDropSizeState
                     return ModuleManager:create_dropdown(value)
                 end;

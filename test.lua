@@ -2082,7 +2082,7 @@ end
                 if Options and Options.Parent then
                     local contentHeight = self:_measure_content()
                     if contentHeight > 8 then
-                        self._size = math.max(self._size, contentHeight)
+                        self._size = contentHeight
                         Options.Size = UDim2.fromOffset(218, self._size)
                         if self._state then
                             Module.Size = UDim2.fromOffset(218, 93 + self._size + self._multiplier)
@@ -3609,7 +3609,8 @@ end
     local lastShiftToggle = 0
     Connections['library_visiblity'] = UserInputService.InputBegan:Connect(function(input: InputObject, process: boolean)
         -- Use RightShift to toggle UI and ignore toggle if a color picker is open
-        if input.KeyCode ~= Enum.KeyCode.RightShift then
+        local uiToggleKey = _G.UIKey or Enum.KeyCode.RightShift
+        if input.KeyCode ~= uiToggleKey then
             return
         end
         -- if color picker open globally, don't toggle UI

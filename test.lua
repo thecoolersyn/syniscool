@@ -782,7 +782,7 @@ Hyperion.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 Hyperion.Parent = CoreGui
     
     local Container = Instance.new('Frame')
-    Container.ClipsDescendants = false
+    Container.ClipsDescendants = true
     Container.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Container.AnchorPoint = Vector2.new(0.5, 0.5)
     Container.Name = 'Container'

@@ -1445,13 +1445,13 @@ self.set_background_image = self.SetBackgroundMedia
 
     function self:change_visiblity(state: boolean)
         if state then
-            Container.Size = UDim2.fromOffset(620, 400)
-            Container.BackgroundTransparency = 0.16
-            Container.Visible = true
+            TweenService:Create(Container, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(620, 400)
+            }):Play()
         else
-            Container.Size = UDim2.fromOffset(104, 52)
-            Container.BackgroundTransparency = 0.95
-            Container.Visible = true
+            TweenService:Create(Container, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                Size = UDim2.fromOffset(104.5, 52)
+            }):Play()
         end
     end
     
@@ -1717,7 +1717,7 @@ function TabManager:moduleparagraph(settings: any)
     end
 
     local Module = Instance.new('Frame')
-    Module.ClipsDescendants = false
+    Module.ClipsDescendants = true
     Module.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Module.BackgroundTransparency = 0.42
     Module.Position = UDim2.new(0.004115226212888956, 0, 0, 0)
@@ -1805,7 +1805,7 @@ function TabManager:create_image(settings: any)
     end
 
     local Module = Instance.new('Frame')
-    Module.ClipsDescendants = false
+    Module.ClipsDescendants = true
     Module.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Module.BackgroundTransparency = 0.42
     Module.Position = UDim2.new(0.004, 0, 0, 0)
@@ -1857,7 +1857,7 @@ end
             end
 
             local Module = Instance.new('Frame')
-            Module.ClipsDescendants = false
+            Module.ClipsDescendants = true
             Module.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Module.BackgroundTransparency = 0.42
             Module.Position = UDim2.new(0.004115226212888956, 0, 0, 0)

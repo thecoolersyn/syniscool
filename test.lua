@@ -3308,8 +3308,6 @@ end
 
                         CurrentDropSizeState = 0;
 
-                        ModuleManager:refresh_size()
-
                         TweenService:Create(Module, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                             Size = UDim2.fromOffset(218, 93 + ModuleManager._size + ModuleManager._multiplier)
                         }):Play()
@@ -3329,6 +3327,10 @@ end
                         TweenService:Create(Arrow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                             Rotation = 0
                         }):Play()
+
+                        task.delay(0.55, function()
+                            ModuleManager:refresh_size()
+                        end)
                     end
                 end
 

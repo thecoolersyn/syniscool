@@ -1710,11 +1710,7 @@ function TabManager:moduleparagraph(settings: any)
         _multiplier = 0
     }
 
-    if settings.section == 'right' then
-        settings.section = RightSection
-    else
-        settings.section = LeftSection
-    end
+    local section = (settings.section == 'right') and RightSection or LeftSection
 
     local Module = Instance.new('Frame')
     Module.ClipsDescendants = true
@@ -1725,7 +1721,7 @@ function TabManager:moduleparagraph(settings: any)
     Module.Size = UDim2.new(0, 218, 0, 70)
     Module.BorderSizePixel = 0
     Module.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-    Module.Parent = settings.section
+    Module.Parent = section
 
     local UIListLayout = Instance.new('UIListLayout')
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1798,11 +1794,7 @@ end
 
 function TabManager:create_image(settings: any)
 
-    if settings.section == 'right' then
-        settings.section = RightSection
-    else
-        settings.section = LeftSection
-    end
+    local section = (settings.section == 'right') and RightSection or LeftSection
 
     local Module = Instance.new('Frame')
     Module.ClipsDescendants = true
@@ -1813,7 +1805,7 @@ function TabManager:create_image(settings: any)
     Module.Size = UDim2.new(0, 218, 0, 140) 
     Module.BorderSizePixel = 0
     Module.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-    Module.Parent = settings.section
+    Module.Parent = section
 
     local UICorner = Instance.new('UICorner')
     UICorner.CornerRadius = UDim.new(0, 8)
@@ -1850,11 +1842,7 @@ end
                 _multiplier = 0
             }
 
-            if settings.section == 'right' then
-                settings.section = RightSection
-            else
-                settings.section = LeftSection
-            end
+    local section = (settings.section == 'right') and RightSection or LeftSection
 
             local Module = Instance.new('Frame')
             Module.ClipsDescendants = true
@@ -1865,7 +1853,7 @@ end
             Module.Size = UDim2.new(0, 218, 0, 93)
             Module.BorderSizePixel = 0
             Module.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-            Module.Parent = settings.section
+            Module.Parent = section
 
             local UIListLayout = Instance.new('UIListLayout')
             UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder

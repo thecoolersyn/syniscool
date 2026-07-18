@@ -1989,6 +1989,7 @@ end
             Keybind.Size = UDim2.new(0, 33, 0, 15)
             Keybind.BorderSizePixel = 0
             Keybind.BackgroundColor3 = UIAccentColor
+            Keybind.Visible = _G.Mobile ~= true
             Keybind.Parent = Header
             
             local UICorner = Instance.new('UICorner')
@@ -2553,6 +2554,7 @@ end
                 KeybindBox.AnchorPoint = Vector2.new(0, 0.5)
                 KeybindBox.BackgroundColor3 = UIAccentColor
                 KeybindBox.BorderSizePixel = 0
+                KeybindBox.Visible = _G.Mobile ~= true
                 KeybindBox.Parent = Checkbox
             
                 local KeybindCorner = Instance.new("UICorner")
@@ -3609,7 +3611,7 @@ end
     local lastShiftToggle = 0
     Connections['library_visiblity'] = UserInputService.InputBegan:Connect(function(input: InputObject, process: boolean)
         -- Use RightShift to toggle UI and ignore toggle if a color picker is open
-        if input.KeyCode ~= Enum.KeyCode.RightShift then
+        if input.KeyCode ~= (_G.UIKey or Enum.KeyCode.RightShift) then
             return
         end
         -- if color picker open globally, don't toggle UI

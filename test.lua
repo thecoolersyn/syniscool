@@ -1547,7 +1547,6 @@ self.set_background_image = self.SetBackgroundMedia
     end
 
     function self:update_sections(left_section: ScrollingFrame, right_section: ScrollingFrame)
-        pcall(function() print("[DBG update_sections] show L=", left_section.Name, "R=", right_section.Name) end)
         for _, object in Sections:GetChildren() do
             if object == left_section or object == right_section then
                 object.Visible = true
@@ -1855,8 +1854,7 @@ end
             Module.BorderSizePixel = 0
             Module.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
             Module.Parent = section
-            pcall(function() print("[DBG create_module]", tostring(settings.title), settings.section == 'right' and "RIGHT" or "LEFT", "| parent=", section.Name, "| tabOfParent=", (section.Parent and section.Parent.Parent and section.Parent.Parent.Name) or "?") end)
-
+			
             local UIListLayout = Instance.new('UIListLayout')
             UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
             UIListLayout.Parent = Module

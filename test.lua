@@ -603,42 +603,158 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 10)
 UIListLayout.Parent = NotificationContainer
 
--- Function to create notifications
-function Library.SendNotification(settings)
-    -- Create the notification frame (this will be managed by UIListLayout)
-    local Notification = Instance.new("Frame")
-    Notification.Size = UDim2.new(1, 0, 0, 60)  -- Width = 100% of NotificationContainer's width, dynamic height (Y)
-    Notification.BackgroundTransparency = 1  -- Outer frame is transparent for layout to work
-    Notification.BorderSizePixel = 0
-    Notification.Name = "Notification"
-    Notification.Parent = NotificationContainer  -- Parent it to your NotificationContainer (the parent of the list layout)
-    Notification.AutomaticSize = Enum.AutomaticSize.Y  -- Allow this frame to resize based on child height
+-- Subtle, capped backdrop blur (never darkens the screen, never hurts gameplay visibility)
+local NotificationBlur = nil
+local NotificationBlurConnections = {}
 
-    -- Add rounded corners to outer frame
+local function GetNotificationBlur()
+    if NotificationBlur and NotificationBlur.Parent then
+        return NotificationBlur
+    end
+
+    local blur = nil
+
+    for _, effect in Lighting:GetChildren() do
+        if effect:IsA("BlurEffect") and effect.Name == "FrostwareNotificationBlur" then
+            blur = effect
+            break
+        end
+    end
+
+    if not blur then
+        blur = Instance.new("BlurEffect")
+        blur.Name = "FrostwareNotificationBlur"
+        blur.Size = 0
+        blur.Enabled = true
+        blur.Parent = Lighting
+    end
+
+    NotificationBlur = blur
+
+    return blur
+end
+
+local function SetNotificationBlurTarget(target)
+    local blur = GetNotificationBlur()
+    local clamped = math.clamp(target, 0, 8)
+
+    if TweenService then
+        local ok = pcall(function()
+            local tween = TweenService:Create(blur, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = clamped
+            })
+            tween:Play()
+        end)
+
+        if not ok then
+            blur.Size = clamped
+        end
+    else
+        blur.Size = clamped
+    end
+
+    if clamped <= 0 then
+        task.delay(0.5, function()
+            if NotificationBlur and NotificationBlur.Size <= 0.01 then
+                NotificationBlur.Enabled = false
+            end
+        end)
+    else
+        blur.Enabled = true
+    end
+end
+
+local function TweenGUISafe(obj, info, props)
+    if not TweenService or not obj then
+        return nil
+    end
+
+    local ok, tween = pcall(TweenService.Create, TweenService, obj, info, props)
+
+    if ok and tween then
+        tween:Play()
+        return tween
+    end
+
+    return nil
+end
+
+-- Shared notification theme + icons
+local NOTIFICATION_THEME = {
+    success = Color3.fromRGB(60, 220, 120),
+    error   = Color3.fromRGB(255, 70, 70),
+    warning = Color3.fromRGB(255, 200, 70),
+    info    = UIAccentColor -- fallback accent (resolved lazily via the upvalue)
+}
+
+local NOTIFICATION_ICONS = {
+    success = "rbxassetid://6035047391",
+    error   = "rbxassetid://6035047393",
+    warning = "rbxassetid://6035047396",
+    info    = "rbxassetid://6035047390"
+}
+
+-- Function to create notifications
+-- API stays identical: Library.SendNotification({ title = "...", text = "...", duration = N, type = "..." })
+function Library.SendNotification(settings)
+    settings = type(settings) == "table" and settings or {}
+
+    -- Module name + status text (requirement: show module name and Enabled/Disabled)
+    local moduleName = settings.title or settings.module or "Notification"
+    local statusText = settings.text or settings.status or ""
+    local nType = settings.type or "info"
+    local accent = NOTIFICATION_THEME[nType] or UIAccentColor
+    local iconAsset = NOTIFICATION_ICONS[nType] or NOTIFICATION_ICONS.info
+    local duration = math.clamp(tonumber(settings.duration) or 5, 1.5, 30)
+
+    -- Shift the existing stack upward smoothly to make room for the new notification
+    local shift = (NotificationContainer.AbsoluteSize.Y > 0) and NotificationContainer.AbsoluteSize.Y or 0
+    local baseY = NotificationContainer.Position.Y.Offset
+    NotificationContainer.Position = UDim2.new(NotificationContainer.Position.X.Scale, NotificationContainer.Position.X.Offset, NotificationContainer.Position.Y.Scale, baseY + (shift > 0 and 0 or 70))
+    TweenGUISafe(NotificationContainer, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        Position = UDim2.new(NotificationContainer.Position.X.Scale, NotificationContainer.Position.X.Offset, NotificationContainer.Position.Y.Scale, baseY)
+    })
+
+    -- Outer transparent frame (managed by UIListLayout)
+    local Notification = Instance.new("Frame")
+    Notification.Size = UDim2.new(1, 0, 0, 62)
+    Notification.BackgroundTransparency = 1
+    Notification.BorderSizePixel = 0
+    Notification.ClipsDescendants = true
+    Notification.Name = "Notification"
+    Notification.Parent = NotificationContainer
+    Notification.AutomaticSize = Enum.AutomaticSize.Y
+
     local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 4)
+    UICorner.CornerRadius = UDim.new(0, 6)
     UICorner.Parent = Notification
 
-    -- Create the inner frame for the notification's content
+    -- Inner content frame
     local InnerFrame = Instance.new("Frame")
-    InnerFrame.Size = UDim2.new(1, 0, 0, 60)
-    InnerFrame.Position = UDim2.new(0, 0, 0, 0)
-    InnerFrame.BackgroundColor3 = Color3.fromRGB(32, 38, 51)
-    InnerFrame.BackgroundTransparency = 0.15
+    InnerFrame.Size = UDim2.new(1, 0, 0, 62)
+    InnerFrame.BackgroundColor3 = Color3.fromRGB(24, 27, 36)
+    InnerFrame.BackgroundTransparency = 1
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
     InnerFrame.Parent = Notification
     InnerFrame.AutomaticSize = Enum.AutomaticSize.Y
 
     local InnerUICorner = Instance.new("UICorner")
-    InnerUICorner.CornerRadius = UDim.new(0, 4)
+    InnerUICorner.CornerRadius = UDim.new(0, 6)
     InnerUICorner.Parent = InnerFrame
 
+    local InnerStroke = Instance.new("UIStroke")
+    InnerStroke.Color = accent
+    InnerStroke.Thickness = 1
+    InnerStroke.Transparency = 1
+    InnerStroke.Parent = InnerFrame
+
+    -- Accent bar
     local AccentBar = Instance.new("Frame")
-    AccentBar.Size = UDim2.new(0, 3, 1, -6)
-    AccentBar.Position = UDim2.new(0, 0, 0, 3)
-    AccentBar.BackgroundColor3 = UIAccentColor
-    AccentBar.BackgroundTransparency = 0
+    AccentBar.Size = UDim2.new(0, 3, 1, -12)
+    AccentBar.Position = UDim2.new(0, 0, 0, 6)
+    AccentBar.BackgroundColor3 = accent
+    AccentBar.BackgroundTransparency = 1
     AccentBar.BorderSizePixel = 0
     AccentBar.Name = "AccentBar"
     AccentBar.Parent = InnerFrame
@@ -647,67 +763,144 @@ function Library.SendNotification(settings)
     AccentBarCorner.CornerRadius = UDim.new(0, 2)
     AccentBarCorner.Parent = AccentBar
 
+    -- Status icon (kept aligned with text)
+    local Icon = Instance.new("ImageLabel")
+    Icon.Name = "Icon"
+    Icon.Size = UDim2.fromOffset(20, 20)
+    Icon.Position = UDim2.fromOffset(12, 12)
+    Icon.BackgroundTransparency = 1
+    Icon.Image = iconAsset
+    Icon.ImageColor3 = accent
+    Icon.ImageTransparency = 1
+    Icon.ScaleType = Enum.ScaleType.Fit
+    Icon.Parent = InnerFrame
+
+    -- Module name (title line)
     local Title = Instance.new("TextLabel")
-    Title.Text = settings.title or "Notification Title"
-    Title.TextColor3 = Color3.fromRGB(210, 210, 210)
-    Title.TextStrokeTransparency = 0.5
+    Title.Text = tostring(moduleName)
+    Title.TextColor3 = Color3.fromRGB(225, 227, 235)
+    Title.TextStrokeTransparency = 0.6
     Title.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
     Title.TextSize = 14
-    Title.Size = UDim2.new(1, -16, 0, 20)
-    Title.Position = UDim2.new(0, 8, 0, 5)
+    Title.Size = UDim2.new(1, -44, 0, 20)
+    Title.Position = UDim2.fromOffset(40, 10)
     Title.BackgroundTransparency = 1
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.TextYAlignment = Enum.TextYAlignment.Center
     Title.TextWrapped = true
-    Title.AutomaticSize = Enum.AutomaticSize.Y
+    Title.TextTransparency = 1
     Title.Parent = InnerFrame
 
+    -- Status / body line (shows Enabled/Disabled)
     local Body = Instance.new("TextLabel")
-    Body.Text = settings.text or "This is the body of the notification."
-    Body.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Body.TextStrokeTransparency = 0.6
+    Body.Text = tostring(statusText)
+    Body.TextColor3 = Color3.fromRGB(180, 183, 195)
+    Body.TextStrokeTransparency = 0.7
     Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
     Body.TextSize = 12
-    Body.Size = UDim2.new(1, -16, 0, 30)
-    Body.Position = UDim2.new(0, 8, 0, 25)
+    Body.Size = UDim2.new(1, -44, 0, 18)
+    Body.Position = UDim2.fromOffset(40, 30)
     Body.BackgroundTransparency = 1
     Body.TextXAlignment = Enum.TextXAlignment.Left
     Body.TextYAlignment = Enum.TextYAlignment.Top
     Body.TextWrapped = true
-    Body.AutomaticSize = Enum.AutomaticSize.Y
+    Body.TextTransparency = 1
     Body.Parent = InnerFrame
 
-    -- Force the size to adjust after the text is fully loaded and wrapped
-    task.spawn(function()
-        wait(0.1)  -- Allow text wrapping to finish
-        -- Adjust inner frame size based on content
-        local totalHeight = Title.TextBounds.Y + Body.TextBounds.Y + 10  -- Add padding
-        InnerFrame.Size = UDim2.new(1, 0, 0, totalHeight)  -- Resize the inner frame
-    end)
+    -- Progress bar (shrinks full width -> zero over the duration)
+    local ProgressBar = Instance.new("Frame")
+    ProgressBar.Name = "Bar"
+    ProgressBar.AnchorPoint = Vector2.new(0, 1)
+    ProgressBar.Position = UDim2.new(0, 0, 1, 0)
+    ProgressBar.Size = UDim2.new(1, 0, 0, 3)
+    ProgressBar.BackgroundColor3 = accent
+    ProgressBar.BorderSizePixel = 0
+    ProgressBar.Parent = InnerFrame
 
-    -- Use task.spawn to ensure the notification tweening happens asynchronously
-    task.spawn(function()
-        -- Tween In the Notification (inner frame)
-        local tweenIn = TweenService:Create(InnerFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0, 0, 0, 10 + NotificationContainer.Size.Y.Offset)
+    local ProgressCorner = Instance.new("UICorner")
+    ProgressCorner.CornerRadius = UDim.new(1, 0)
+    ProgressCorner.Parent = ProgressBar
+
+    -- Subtle backdrop blur while a notification is on screen
+    SetNotificationBlurTarget(7)
+
+    local removed = false
+
+    local function RemoveNotification()
+        if removed then
+            return
+        end
+
+        removed = true
+
+        -- Slide back to the left + fade out
+        TweenGUISafe(InnerFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+            Position = UDim2.new(-1.2, 0, 0, 0),
+            BackgroundTransparency = 1,
+            ["InnerStroke.Transparency"] = 1
         })
-        tweenIn:Play()
 
-        -- Wait for the duration before tweening out
-        local duration = settings.duration or 5  -- Default to 5 seconds if not provided
-        wait(duration)
+        TweenGUISafe(Icon, TweenInfo.new(0.3), { ImageTransparency = 1 })
+        TweenGUISafe(Title, TweenInfo.new(0.3), { TextTransparency = 1 })
+        TweenGUISafe(Body, TweenInfo.new(0.3), { TextTransparency = 1 })
+        TweenGUISafe(AccentBar, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
+        TweenGUISafe(ProgressBar, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
 
-        -- Tween Out the Notification (inner frame) to the right side of the screen
-        local tweenOut = TweenService:Create(InnerFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-            Position = UDim2.new(1, 310, 0, 10 + NotificationContainer.Size.Y.Offset)  -- Move to the right off-screen
-        })
-        tweenOut:Play()
+        task.delay(0.32, function()
+            if Notification and Notification.Parent then
+                Notification:Destroy()
+            end
 
-        -- Remove the notification after it is done tweening out
-        tweenOut.Completed:Connect(function()
-            Notification:Destroy()
+            -- Release blur only when no notifications remain
+            if NotificationContainer and (#NotificationContainer:GetChildren() == 0) then
+                SetNotificationBlurTarget(0)
+            end
         end)
-    end)
+    end
+
+    -- Slide in from the right (start off-screen right)
+    InnerFrame.Position = UDim2.new(1.2, 0, 0, 0)
+    TweenGUISafe(InnerFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 0.12,
+        ["InnerStroke.Transparency"] = 0.25
+    })
+
+    TweenGUISafe(Icon, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageTransparency = 0 })
+    TweenGUISafe(Title, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 })
+    TweenGUISafe(Body, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 })
+    TweenGUISafe(AccentBar, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0 })
+
+    -- Progress bar shrinks over the full duration; notification leaves only after it finishes
+    local progTween = TweenGUISafe(ProgressBar, TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 3)
+    })
+
+    if progTween then
+        progTween.Completed:Connect(RemoveNotification)
+    else
+        task.delay(duration, RemoveNotification)
+    end
+end
+
+-- Clean up notification blur connections / instances on unload
+function Library:DestroyNotifications()
+    if NotificationContainer and NotificationContainer.Parent then
+        NotificationContainer:Destroy()
+    end
+
+    for _, connection in NotificationBlurConnections do
+        pcall(function()
+            connection:Disconnect()
+        end)
+    end
+
+    NotificationBlurConnections = {}
+
+    if NotificationBlur and NotificationBlur.Parent then
+        NotificationBlur:Destroy()
+        NotificationBlur = nil
+    end
 end
 
 function Library:get_screen_scale()
@@ -1854,7 +2047,8 @@ end
             Module.BorderSizePixel = 0
             Module.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
             Module.Parent = section
-			
+
+
             local UIListLayout = Instance.new('UIListLayout')
             UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
             UIListLayout.Parent = Module

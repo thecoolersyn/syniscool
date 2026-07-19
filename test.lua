@@ -603,67 +603,6 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 10)
 UIListLayout.Parent = NotificationContainer
 
--- Subtle, capped backdrop blur (never darkens the screen, never hurts gameplay visibility)
-local NotificationBlur = nil
-local NotificationBlurConnections = {}
-
-local function GetNotificationBlur()
-    if NotificationBlur and NotificationBlur.Parent then
-        return NotificationBlur
-    end
-
-    local blur = nil
-
-    for _, effect in Lighting:GetChildren() do
-        if effect:IsA("BlurEffect") and effect.Name == "FrostwareNotificationBlur" then
-            blur = effect
-            break
-        end
-    end
-
-    if not blur then
-        blur = Instance.new("BlurEffect")
-        blur.Name = "FrostwareNotificationBlur"
-        blur.Size = 0
-        blur.Enabled = true
-        blur.Parent = Lighting
-    end
-
-    NotificationBlur = blur
-
-    return blur
-end
-
-local function SetNotificationBlurTarget(target)
-    local blur = GetNotificationBlur()
-    local clamped = math.clamp(target, 0, 8)
-
-    if TweenService then
-        local ok = pcall(function()
-            local tween = TweenService:Create(blur, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = clamped
-            })
-            tween:Play()
-        end)
-
-        if not ok then
-            blur.Size = clamped
-        end
-    else
-        blur.Size = clamped
-    end
-
-    if clamped <= 0 then
-        task.delay(0.5, function()
-            if NotificationBlur and NotificationBlur.Size <= 0.01 then
-                NotificationBlur.Enabled = false
-            end
-        end)
-    else
-        blur.Enabled = true
-    end
-end
-
 local function TweenGUISafe(obj, info, props)
     if not TweenService or not obj then
         return nil
@@ -821,9 +760,6 @@ function Library.SendNotification(settings)
     ProgressCorner.CornerRadius = UDim.new(1, 0)
     ProgressCorner.Parent = ProgressBar
 
-    -- Subtle backdrop blur while a notification is on screen
-    SetNotificationBlurTarget(7)
-
     local removed = false
 
     local function RemoveNotification()
@@ -833,9 +769,16 @@ function Library.SendNotification(settings)
 
         removed = true
 
-        -- Slide back to the left + fade out
-        TweenGUISafe(InnerFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-            Position = UDim2.new(-1.2, 0, 0, 0),
+        -- Stop layout from resizing mid-animation
+        Notification.AutomaticSize = Enum.AutomaticSize.None
+
+        -- Shrink height to 0 so UIListLayout smoothly moves others up
+        TweenGUISafe(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+            Size = UDim2.new(1, 0, 0, 0)
+        })
+
+        -- Fade out all content
+        TweenGUISafe(InnerFrame, TweenInfo.new(0.3), {
             BackgroundTransparency = 1,
             ["InnerStroke.Transparency"] = 1
         })
@@ -849,11 +792,6 @@ function Library.SendNotification(settings)
         task.delay(0.32, function()
             if Notification and Notification.Parent then
                 Notification:Destroy()
-            end
-
-            -- Release blur only when no notifications remain
-            if NotificationContainer and (#NotificationContainer:GetChildren() == 0) then
-                SetNotificationBlurTarget(0)
             end
         end)
     end
@@ -883,23 +821,9 @@ function Library.SendNotification(settings)
     end
 end
 
--- Clean up notification blur connections / instances on unload
 function Library:DestroyNotifications()
     if NotificationContainer and NotificationContainer.Parent then
         NotificationContainer:Destroy()
-    end
-
-    for _, connection in NotificationBlurConnections do
-        pcall(function()
-            connection:Disconnect()
-        end)
-    end
-
-    NotificationBlurConnections = {}
-
-    if NotificationBlur and NotificationBlur.Parent then
-        NotificationBlur:Destroy()
-        NotificationBlur = nil
     end
 end
 

@@ -46,6 +46,9 @@ local LucideIcons = {
 	["x"]                = "rbxassetid://10747384394",
 	["folder-plus"]      = "rbxassetid://10723386531",
 	["folder"]           = "rbxassetid://10723387563",
+	["swords"]	 		 = "rbxassetid://10734975692",
+	["bomb"] 			 = "rbxassetid://10709781460",
+	["camera"]  		 = "rbxassetid://10709789686",
 }
 local TWEEN_FAST   = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_MED    = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -193,107 +196,24 @@ end
 -- Game-scoped storage. Owned entirely by the UI source: the main game script
 -- never has to say which game it is or where anything is stored.
 --
---   Hyperion/<GameFamily>/assets/
---   Hyperion/<GameFamily>/configs/
---   Hyperion/<GameFamily>/configs/Selected.txt  (last chosen config, per family)
---
--- Game families are resolved at load time by matching the current
--- UniverseId (game.GameId) against the hardcoded verified GameList table.
--- The resolved GameFamily folder name determines ALL asset and config paths
--- (see HYPERION_ROOT).
+--   Hyperion/<game-id>/assets/
+--   Hyperion/<game-id>/configs/
+--   Hyperion/<game-id>/configs/Selected.txt   (last chosen config, per game)
 -- ===========================================================================
 local HYPERION_ROOT = "Hyperion"
 
--- ===========================================================================
--- Game identification (single source of truth).
---
--- The game is identified by its UniverseId (game.GameId), which is shared by
--- every place of the same experience (main, matchmaking, ranked, practice...).
--- CreatorName is the supporting verification identity. PlaceId is collected
--- for debugging only and is NEVER used as the identity or the folder name.
---
--- Supported games are in the hardcoded GameList table below. Each entry
--- carries: GameName (for the folder label), UniverseId (primary identity),
--- CreatorName + CreatorId (for verification), and a list of known PlaceIds
--- (for debug only). To add a new supported game: add one entry per universe
--- to GameList and ensure the family name exists in GAME_FAMILY_BY_NAME.
---
--- A game is classified ONLY when its UniverseId matches a verified entry and
--- the creator identity does not contradict it. Unknown games never resolve
--- into a known family; they get an isolated "gid_<universeId>" folder.
--- ===========================================================================
-
--- Game name (folded) -> logical family folder label. Used to name verified
--- gamelist entries and to interpret legacy folders during migration; never
--- used on its own to classify the current game.
-local GAME_FAMILY_BY_NAME = {
-	["blade ball"]        = "BladeBall",
-	["bladeball"]         = "BladeBall",
-	["fisch"]             = "Fisch",
-	["sell lemons"]       = "SellLemons",
-	["selllemons"]        = "SellLemons",
-	["murder mystery 2"]  = "mm2",
-	["murdermystery2"]    = "mm2",
-	["evade"]             = "evade",
-	["pet simulator 99"]  = "PetSim99",
-	["petsim99"]          = "PetSim99",
+-- Short identifiers for known games; extend here and nothing else changes.
+local GAME_ID_BY_NAME = {
+	["blade ball"]      = "bb",
+	["bladeball"]       = "bb",
+	["fisch"]           = "fisch",
+	["murder mystery 2"] = "mm2",
+	["murdermystery2"]  = "mm2",
+	["evade"]           = "evade",
 }
 
--- Every supported game in one table. Each entry is keyed by UniverseId
--- internally and carries verified identity values that the resolver compares
--- against the live game environment. All values were verified through real
--- metadata reads or from the gamelist.txt reference.
-local GameList = {
-	{
-		GameName    = "Blade Ball",
-		UniverseId  = 4777817887,
-		CreatorName = "Wiggity.",
-		CreatorId   = 3044021115,
-		CreatorType = "Group",
-		PlaceIds    = { 13772394625, 15234596844 },
-	},
-	{
-		GameName    = "Sell Lemons 🍋",
-		UniverseId  = 7395930870,
-		CreatorName = "BloxByte Games",
-		CreatorId   = 909228726,
-		CreatorType = "Group",
-		PlaceIds    = { 79268393072444 },
-	},
-	{
-		GameName    = "Fisch",
-		UniverseId  = 5750914919,
-		CreatorName = "Fisching",
-		CreatorId   = 1815459992,
-		CreatorType = "User",
-		PlaceIds    = { 131716211654599 },
-	},
-	{
-		GameName    = "Murder Mystery 2",
-		UniverseId  = 66654135,
-		CreatorName = "Nikilis",
-		CreatorId   = 1848960,
-		CreatorType = "User",
-		PlaceIds    = { 142823291 },
-	},
-	{
-		GameName    = "Pet Simulator 99",
-		UniverseId  = 3317771874,
-		CreatorName = "BIG Games Pets",
-		CreatorId   = 544431964,
-		CreatorType = "Group",
-		PlaceIds    = { 8737899170 },
-	},
-}
-
--- UniverseId -> verified entry. All places of one experience share the id,
--- so any sub-place of a supported game resolves to the same family.
-local GAMELIST_BY_UNIVERSE = {}
-for _, e in ipairs(GameList) do
-	if e.UniverseId and e.UniverseId ~= 0 then
-		GAMELIST_BY_UNIVERSE[e.UniverseId] = e
-	end
-end
+-- Exact overrides keyed by universe id when a name cannot be resolved.
+local GAME_ID_BY_UNIVERSE = {}
 
 local function FoldName(text)
 	return tostring(text or ""):lower():gsub("[^%w]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
@@ -303,13 +223,6 @@ local function SlugName(text)
 	local s = FoldName(text):gsub("%s+", "_")
 	if s == "" then return nil end
 	if #s > 32 then s = s:sub(1, 32) end
-	return s
-end
-
--- Creator names such as "Wiggity." vs "Wiggity" must compare equal.
-local function NormalizeCreator(text)
-	local s = tostring(text or ""):lower():gsub("[^%w%s]", "")
-	s = s:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 	return s
 end
 
@@ -328,252 +241,32 @@ local function CurrentPlaceName()
 	return nil
 end
 
--- Family folder label for a VERIFIED game name (UniverseId already matched).
--- Exact/folded name first, then longest keyword containment so that every
--- place of the experience ("Blade Ball: Training Mode", "Blade Ball Ranked",
--- ...) shares the same family folder.
-local function FamilyForVerifiedName(gameName)
-	if not gameName then return nil end
-	local folded = FoldName(gameName)
-	if folded == "" then return nil end
-	local hit = GAME_FAMILY_BY_NAME[folded] or GAME_FAMILY_BY_NAME[folded:gsub("%s+", "")]
-	if hit then return hit end
-	local best, bestLen = nil, 0
-	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
-		if #keyword >= 3 and #keyword > bestLen and folded:find(keyword, 1, true) then
-			best, bestLen = family, #keyword
-		end
-	end
-	if best then return best end
-	-- Verified entry without an explicit family label: derive a stable slug
-	-- from the official game name in the list.
-	return SlugName(gameName)
-end
-
--- Collected metadata for the current Roblox environment. Values come from
--- the DataModel + MarketplaceService; never guessed. getgenv()
--- .HyperionGameMetadataOverride can force values through this exact path for
--- validation/debugging; it is inert when unset.
-local function CollectMetadata()
-	local okPid, pid = pcall(function() return game.PlaceId end)
+local function ResolveGameId()
 	local okGid, gid = pcall(function() return game.GameId end)
+	if okGid and gid and GAME_ID_BY_UNIVERSE[gid] then
+		return GAME_ID_BY_UNIVERSE[gid]
+	end
 	local name = CurrentPlaceName()
-	local creatorName, creatorId, creatorType
-
-	local okInfo, info = pcall(function()
-		return game:GetService("MarketplaceService"):GetProductInfo(pid or game.PlaceId)
-	end)
-	if okInfo and type(info) == "table" then
-		if type(info.Name) == "string" and info.Name ~= "" then
-			name = info.Name
-		end
-		if type(info.Creator) == "table" then
-			creatorName = info.Creator.Name
-			creatorId   = info.Creator.Id
-			creatorType = (typeof(info.Creator.Type) == "EnumItem")
-				and info.Creator.Type.Name
-				or tostring(info.Creator.Type)
-		end
+	if name then
+		local folded = FoldName(name)
+		local known = GAME_ID_BY_NAME[folded] or GAME_ID_BY_NAME[folded:gsub("%s+", "")]
+		if known then return known end
+		local slug = SlugName(name)
+		if slug then return slug end
 	end
-
-	local meta = {
-		PlaceId     = okPid and pid or nil,
-		UniverseId  = okGid and gid or nil,
-		PlaceName   = name,
-		CreatorName = creatorName,
-		CreatorId   = creatorId,
-		CreatorType = creatorType,
-	}
-	meta.GameId = meta.UniverseId -- compatibility alias; same value.
-
-	local override
-	pcall(function()
-		local g = getgenv()
-		local o = g and g.HyperionGameMetadataOverride
-		if type(o) == "table" then override = o end
-	end)
-	if override then
-		meta.PlaceId     = tonumber(override.PlaceId) or meta.PlaceId
-		meta.UniverseId  = tonumber(override.UniverseId or override.GameId) or meta.UniverseId
-		meta.GameId      = meta.UniverseId
-		if type(override.PlaceName) == "string" and override.PlaceName ~= "" then
-			meta.PlaceName = override.PlaceName
-		end
-		if type(override.CreatorName) == "string" and override.CreatorName ~= "" then
-			meta.CreatorName = override.CreatorName
-		end
-		meta.CreatorId = tonumber(override.CreatorId) or meta.CreatorId
-		if type(override.CreatorType) == "string" and override.CreatorType ~= "" then
-			meta.CreatorType = override.CreatorType
-		end
+	if okGid and gid and gid ~= 0 then
+		-- Unique per experience, so two unknown games can never share a folder.
+		return "gid_" .. tostring(gid)
 	end
-	return meta
+	return "default"
 end
 
--- The one authoritative game-family resolver.
--- Returns the logical family folder name for the given metadata.
-local function resolveGameId(meta)
-	local uid = tonumber(meta and meta.UniverseId)
-	if not uid or uid == 0 then
-		-- UniverseId unavailable: cannot identify the game; neutral folder.
-		return "default"
-	end
-
-	local entry = GAMELIST_BY_UNIVERSE[uid]
-	if entry then
-		-- UniverseId is the primary identity. Verify the creator identity when
-		-- both sides carry it; a contradiction means the entry data is stale or
-		-- spoofed, so refuse to classify instead of guessing.
-		local verified = true
-		local liveName = meta.CreatorName
-		local liveId   = meta.CreatorId
-		if (liveName and liveName ~= "") and entry.CreatorName then
-			local namesMatch = NormalizeCreator(liveName) == NormalizeCreator(entry.CreatorName)
-			local idsMatch   = liveId and entry.CreatorId and tonumber(liveId) == tonumber(entry.CreatorId)
-			verified = namesMatch or idsMatch == true
-			if liveId and entry.CreatorId and idsMatch == false and not namesMatch then
-				verified = false
-			end
-		elseif liveId and entry.CreatorId then
-			verified = tonumber(liveId) == tonumber(entry.CreatorId)
-		end
-		if verified then
-			local family = FamilyForVerifiedName(entry.GameName)
-			if family and family ~= "" then
-				return family
-			end
-		end
-	end
-
-	-- Not in the verified list: never mapped onto a known family. Isolated,
-	-- stable per-experience fallback folder.
-	return "gid_" .. tostring(uid)
-end
-
-local GameMeta  = CollectMetadata()
-local PlaceName = GameMeta.PlaceName
-local GameId    = resolveGameId(GameMeta)
-local GameRoot  = HYPERION_ROOT .. "/" .. GameId
-local AssetDir  = GameRoot .. "/assets"
+local GameName = CurrentPlaceName()
+local GameId = ResolveGameId()
+local GameRoot = HYPERION_ROOT .. "/" .. GameId
+local AssetDir = GameRoot .. "/assets"
 local ConfigDir = GameRoot .. "/configs"
 local SelectedFile = ConfigDir .. "/Selected.txt"
-
--- One-time debug banner: shows collected metadata and the resolved family so
--- real values can be verified against the hardcoded GameList when extending
--- support to a new game.
-if type(print) == "function" then
-	print("=== HYPERION GAME METADATA ===")
-	print("  Family:      " .. tostring(GameId))
-	print("  Game Name:   " .. tostring(PlaceName))
-	print("  PlaceId:     " .. tostring(GameMeta.PlaceId))
-	print("  GameId:      " .. tostring(GameMeta.GameId))
-	print("  CreatorName: " .. tostring(GameMeta.CreatorName))
-	print("  CreatorId:   " .. tostring(GameMeta.CreatorId))
-	print("  CreatorType: " .. tostring(GameMeta.CreatorType))
-	print("  GameList:    " .. tostring(#GameList) .. " verified entries")
-	local matched = GameMeta.UniverseId and GAMELIST_BY_UNIVERSE[GameMeta.UniverseId]
-	print("  GamelistMatch: " .. (matched
-		and (tostring(matched.GameName) .. " [" .. tostring(matched.UniverseId) .. "]")
-		or "none (unknown game)"))
-end
-
--- Legacy migration (idempotent, one-time copy). The previous system used
--- short slugs ("bb", "fisch", "selllemons") under Hyperion/ directly, or
--- stored configs under HyperionUI/. Copy any matching legacy data into
--- Hyperion/<family>/configs/ without overwriting newer files.
-local LEGACY_SLUG_TO_FAMILY = {
-	bb         = "BladeBall",
-	fisch      = "Fisch",
-	selllemons = "SellLemons",
-	["evade"]  = "evade",
-	["mm2"]    = "mm2",
-}
-local LEGACY_ROOTS = { "Hyperion", "HyperionUI" }
-local function HasAny(path)
-	if type(isfolder) == "function" then
-		local ok, v = pcall(isfolder, path)
-		if ok and v then return true end
-	end
-	if type(isfile) == "function" then
-		local ok, v = pcall(isfile, path)
-		if ok and v then return true end
-	end
-	return false
-end
-local function DirIsEmpty(path)
-	if type(listfiles) ~= "function" then return true end
-	local ok, files = pcall(listfiles, path)
-	if not ok or type(files) ~= "table" then return true end
-	return #files == 0
-end
-local function CopyFile(src, dst)
-	if type(readfile) ~= "function" or type(writefile) ~= "function" then return false end
-	if isfile(dst) then return false end -- never overwrite newer data
-	local ok, raw = pcall(readfile, src)
-	if not ok or type(raw) ~= "string" then return false end
-	local dir = dst:match("^(.*)/[^/]+$")
-	if dir and dir ~= "" then
-		pcall(makefolder, dir)
-	end
-	return pcall(writefile, dst, raw)
-end
-local function resolveFamilyFromFolderName(leaf)
-	if not leaf or leaf == "" then return nil end
-	-- Explicit slug overrides (things like "bb" that don't match by name).
-	local explicit = LEGACY_SLUG_TO_FAMILY[leaf:lower()]
-	if explicit then return explicit end
-	-- Skip auto-generated gid_<num> folders from the previous resolver.
-	if leaf:match("^gid_") then return nil end
-	-- Otherwise reuse the name-based family matcher (exact first, then
-	-- longest keyword containment, same rule as verified classification).
-	local folded = FoldName(leaf)
-	local stripped = folded:gsub("%s+", "")
-	local hit = GAME_FAMILY_BY_NAME[folded] or GAME_FAMILY_BY_NAME[stripped]
-	if hit then return hit end
-	local best, bestLen = nil, 0
-	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
-		if #keyword >= 3 and #keyword > bestLen and folded:find(keyword, 1, true) then
-			best, bestLen = family, #keyword
-		end
-	end
-	return best
-end
-local function MigrateLegacy()
-	if type(listfiles) ~= "function" then return end
-	for _, root in ipairs(LEGACY_ROOTS) do
-		local ok, entries = pcall(listfiles, root)
-		if ok and type(entries) == "table" then
-			for _, entry in ipairs(entries) do
-				local epath = tostring(type(entry) == "table" and entry.name or entry)
-				local leaf = epath:match("([^/\\]+)[/\\]?$") or epath
-				local family = resolveFamilyFromFolderName(leaf)
-				if family and (root ~= HYPERION_ROOT or leaf ~= family) then
-					local srcCfg = root .. "/" .. leaf .. "/configs"
-					local dstCfg = HYPERION_ROOT .. "/" .. family .. "/configs"
-					if not HasAny(dstCfg) or DirIsEmpty(dstCfg) then
-						local cok, cfiles = pcall(listfiles, srcCfg)
-						if cok and type(cfiles) == "table" and #cfiles > 0 then
-							pcall(makefolder, HYPERION_ROOT)
-							pcall(makefolder, HYPERION_ROOT .. "/" .. family)
-							pcall(makefolder, dstCfg)
-							pcall(makefolder, HYPERION_ROOT .. "/" .. family .. "/assets")
-							for _, f in ipairs(cfiles) do
-								local fp = tostring(type(f) == "table" and f.name or f)
-								if fp:match("%.json$") or fp:match("Selected%.txt$") then
-									local base = fp:match("([^/\\]+)$")
-									if base then
-										CopyFile(fp, dstCfg .. "/" .. base)
-									end
-								end
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-end
-pcall(MigrateLegacy)
 
 local function CanWriteFiles()
 	return type(writefile) == "function" and type(readfile) == "function"
@@ -605,12 +298,10 @@ end
 
 local Library = {}
 function Library:GetGameId() return GameId end
-function Library:GetGameName() return PlaceName end
+function Library:GetGameName() return GameName end
 function Library:GetGameRoot() return GameRoot end
 function Library:GetAssetDirectory() return AssetDir end
 function Library:GetConfigDirectory() return ConfigDir end
-function Library:GetGameFamily() return GameId end
-function Library:GetGameMetadata() return GameMeta end
 local GetLastSelectedConfig = ReadSelectedConfig
 local SetLastSelectedConfig = WriteSelectedConfig
 local activeWindow = nil
@@ -700,7 +391,6 @@ function Library:CreateWindow(opts)
 		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
 		GroupTransparency = 1,
-		Active = true,
 		Parent = Gui,
 	})
 	Corner(Main, 12)
@@ -732,7 +422,6 @@ function Library:CreateWindow(opts)
 		Name = "Header",
 		Size = UDim2.new(1, 0, 0, HEADER_H),
 		BackgroundTransparency = 1,
-		Active = true,
 		ZIndex = 6,
 		Parent = Main,
 	})
@@ -2688,7 +2377,6 @@ end
 		BorderSizePixel = 0,
 		GroupTransparency = 1,
 		Visible = false,
-		Active = true,
 		ZIndex = 20,
 		Parent = Gui,
 	})

@@ -46,6 +46,10 @@ local LucideIcons = {
 	["x"]                = "rbxassetid://10747384394",
 	["folder-plus"]      = "rbxassetid://10723386531",
 	["folder"]           = "rbxassetid://10723387563",
+	["swords"]           = "rbxassetid://10734975692",
+    ["bomb"]             = "rbxassetid://10709781460",
+    ["camera"]           = "rbxassetid://10709789686",
+	["sword"]			 = "rbxassetid://10734975486",
 }
 local TWEEN_FAST   = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_MED    = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)

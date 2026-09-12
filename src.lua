@@ -190,6 +190,7 @@ local function PreviousWindow()
 	return nil
 end
 local Library = {}
+local activeWindow = nil
 function Library:Notify(n, ...)
 	if activeWindow then
 		return activeWindow:Notify(n, ...)
@@ -208,7 +209,6 @@ function Library:Destroy()
 	if activeWindow then return activeWindow:Destroy() end
 end
 function Library:Window() return activeWindow end
-local activeWindow = nil
 function Library:CreateWindow(opts)
 	opts = opts or {}
 	local title = opts.Title or "Hyperion"
@@ -1807,24 +1807,41 @@ end
 			settings[#settings + 1] = { Kind = kind, Name = name, Obj = obj }
 			return obj
 		end
+		local function gateSetting(sub)
+			if type(sub) ~= "table" or type(sub.Callback) ~= "function" then return sub end
+			local wrapped = {}
+			for k, v in pairs(sub) do wrapped[k] = v end
+			local fn = sub.Callback
+			wrapped.Callback = function(...)
+				if not state then return end
+				return fn(...)
+			end
+			return wrapped
+		end
 		function Module:AddToggle(sub)
+			sub = gateSetting(sub)
 			return track("Toggle", sub and sub.Name, BuildToggle(settingsInner, registerControl(), sub))
 		end
 		function Module:AddSlider(sub)
+			sub = gateSetting(sub)
 			return track("Slider", sub and sub.Name, BuildSlider(settingsInner, registerControl(), sub))
 		end
 		function Module:AddDropdown(sub)
+			sub = gateSetting(sub)
 			return track("Dropdown", sub and sub.Name, BuildDropdown(settingsInner, registerControl(), sub))
 		end
 		function Module:AddColorPick(sub)
+			sub = gateSetting(sub)
 			return track("Color", sub and sub.Name, ColorPreview(settingsInner, registerControl(), sub))
 		end
 		function Module:AddInput(sub)
+			sub = gateSetting(sub)
 			return track("Input", sub and sub.Name, BuildInput(settingsInner, registerControl(), sub))
 		end
 		function Module:AddButton(sub)    return BuildButton(settingsInner, registerControl(), sub) end
 		function Module:AddLabel(sub)     return BuildLabel(settingsInner, registerControl(), sub) end
 		function Module:AddKeybind(sub)
+			sub = gateSetting(sub)
 			return track("Keybind", sub and sub.Name, BuildKeybindRow(settingsInner, registerControl(), sub))
 		end
 		Module.CreateToggle = function(_, sub) return Module:AddToggle(sub) end

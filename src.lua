@@ -193,24 +193,70 @@ end
 -- Game-scoped storage. Owned entirely by the UI source: the main game script
 -- never has to say which game it is or where anything is stored.
 --
---   Hyperion/<game-id>/assets/
---   Hyperion/<game-id>/configs/
---   Hyperion/<game-id>/configs/Selected.txt   (last chosen config, per game)
+--   Hyperion/<GameFamily>/assets/
+--   Hyperion/<GameFamily>/configs/
+--   Hyperion/<GameFamily>/configs/Selected.txt  (last chosen config, per family)
+--
+-- Game families (BladeBall, Fisch, SellLemons, etc.) are resolved at load
+-- time from game metadata collected by CollectMetadata/ResolveGameId.
+-- All paths, configs, and assets derive from the resolved family.
 -- ===========================================================================
 local HYPERION_ROOT = "Hyperion"
 
--- Short identifiers for known games; extend here and nothing else changes.
-local GAME_ID_BY_NAME = {
-	["blade ball"]      = "bb",
-	["bladeball"]       = "bb",
-	["fisch"]           = "fisch",
-	["murder mystery 2"] = "mm2",
-	["murdermystery2"]  = "mm2",
-	["evade"]           = "evade",
+-- Game-family definitions. Each key is the logical folder name under Hyperion/.
+-- CreatorId is the primary signal; GameIds/PlaceIds provide additional matching.
+-- Only verified metadata goes here. Blade Ball and Sell Lemons fall back to
+-- GAME_FAMILY_BY_NAME until their verified creator/universe ids are populated
+-- (verify by launching each game and reading the debug output printed below).
+local GameFamilies = {
+	Fisch = {
+		CreatorId   = 1815459992,
+		CreatorName = "Fisching",
+		GameIds     = { 5750914919 },
+		PlaceIds    = { 131716211654599 },
+	},
+	BladeBall = {
+		CreatorId   = nil,   -- populate after verifying via the debug banner
+		CreatorName = nil,
+		GameIds     = {},
+		PlaceIds    = {},
+	},
+	SellLemons = {
+		CreatorId   = nil,
+		CreatorName = nil,
+		GameIds     = {},
+		PlaceIds    = {},
+	},
 }
 
--- Exact overrides keyed by universe id when a name cannot be resolved.
-local GAME_ID_BY_UNIVERSE = {}
+-- Populate the fast lookup tables from GameFamilies. Runs once at load.
+local GAME_FAMILY_BY_CREATOR_ID = {}
+local GAME_FAMILY_BY_GAME_ID    = {}
+local GAME_FAMILY_BY_PLACE_ID   = {}
+do
+	for family, def in pairs(GameFamilies) do
+		if def.CreatorId then
+			GAME_FAMILY_BY_CREATOR_ID[def.CreatorId] = family
+		end
+		for _, gid in ipairs(def.GameIds or {}) do
+			GAME_FAMILY_BY_GAME_ID[gid] = family
+		end
+		for _, pid in ipairs(def.PlaceIds or {}) do
+			GAME_FAMILY_BY_PLACE_ID[pid] = family
+		end
+	end
+end
+
+local GAME_FAMILY_BY_NAME = {
+	["blade ball"]       = "BladeBall",
+	["bladeball"]        = "BladeBall",
+	["fisch"]            = "Fisch",
+	["sell lemons"]      = "SellLemons",
+	["selllemons"]       = "SellLemons",
+	["murder mystery 2"] = "mm2",
+	["murdermystery2"]   = "mm2",
+	["evade"]            = "evade",
+}
 
 local function FoldName(text)
 	return tostring(text or ""):lower():gsub("[^%w]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
@@ -238,32 +284,225 @@ local function CurrentPlaceName()
 	return nil
 end
 
-local function ResolveGameId()
-	local okGid, gid = pcall(function() return game.GameId end)
-	if okGid and gid and GAME_ID_BY_UNIVERSE[gid] then
-		return GAME_ID_BY_UNIVERSE[gid]
+-- Fuzzy name match for game families (precomputed).
+local GAME_FAMILY_BY_NAME_EXACT = {}
+local GAME_FAMILY_BY_NAME_FOLDED = {}
+do
+	for name, family in pairs(GAME_FAMILY_BY_NAME) do
+		GAME_FAMILY_BY_NAME_EXACT[name] = family
+		local folded = FoldName(name)
+		if folded ~= name then
+			GAME_FAMILY_BY_NAME_FOLDED[folded] = family
+		end
 	end
-	local name = CurrentPlaceName()
+end
+
+local function CollectMetadata()
+	local okPid, pid   = pcall(function() return game.PlaceId end)
+	local okGid, gid   = pcall(function() return game.GameId end)
+	local name         = CurrentPlaceName()
+	local creatorName, creatorId, creatorType
+
+	local okInfo, info = pcall(function()
+		return game:GetService("MarketplaceService"):GetProductInfo(pid or game.PlaceId)
+	end)
+	if okInfo and type(info) == "table" then
+		if type(info.Name) == "string" and info.Name ~= "" then
+			name = info.Name
+		end
+		if type(info.Creator) == "table" then
+			creatorName = info.Creator.Name
+			creatorId   = info.Creator.Id
+			creatorType = (typeof(info.Creator.Type) == "EnumItem")
+				and info.Creator.Type.Name
+				or tostring(info.Creator.Type)
+		end
+	end
+
+	return {
+		PlaceId      = okPid and pid or nil,
+		GameId       = okGid and gid or nil,
+		PlaceName    = name,
+		CreatorName  = creatorName,
+		CreatorId    = creatorId,
+		CreatorType  = creatorType,
+	}
+end
+
+local function resolveGameId(meta)
+	local pid  = meta.PlaceId
+	local gid  = meta.GameId
+	local name = meta.PlaceName
+
+	-- 1) Universe/GameId exact override.
+	if gid and gid ~= 0 and GAME_FAMILY_BY_GAME_ID[gid] then
+		return GAME_FAMILY_BY_GAME_ID[gid]
+	end
+
+	-- 2) PlaceId exact override.
+	if pid and GAME_FAMILY_BY_PLACE_ID[pid] then
+		return GAME_FAMILY_BY_PLACE_ID[pid]
+	end
+
+	-- 3) CreatorId + GameId (strongest family signal).
+	if gid and gid ~= 0 and meta.CreatorId and GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId] then
+		local family = GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId]
+		if GAME_FAMILY_BY_GAME_ID[gid] == family or GAME_FAMILY_BY_GAME_ID[gid] == nil then
+			return family
+		end
+	end
+
+	-- 4) CreatorId alone (cross-place family detection).
+	if meta.CreatorId and GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId] then
+		return GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId]
+	end
+
+	-- 5) Name-based lookup: exact match first, then substring prefix.
 	if name then
 		local folded = FoldName(name)
-		local known = GAME_ID_BY_NAME[folded] or GAME_ID_BY_NAME[folded:gsub("%s+", "")]
-		if known then return known end
-		local slug = SlugName(name)
-		if slug then return slug end
+		local stripped = folded:gsub("%s+", "")
+		local hit = GAME_FAMILY_BY_NAME_EXACT[name]
+			or GAME_FAMILY_BY_NAME_EXACT[folded]
+			or GAME_FAMILY_BY_NAME_FOLDED[folded]
+			or GAME_FAMILY_BY_NAME[folded]
+			or GAME_FAMILY_BY_NAME[stripped]
+		if hit then return hit end
+		-- Substring fallback: "Blade Ball Matchmaking" contains "blade ball".
+		for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
+			if #keyword >= 3 and folded:find(keyword, 1, true) then
+				return family
+			end
+		end
 	end
-	if okGid and gid and gid ~= 0 then
-		-- Unique per experience, so two unknown games can never share a folder.
+
+	-- 6) UniverseId/folder fallback (ensures uniqueness for unknown games).
+	if gid and gid ~= 0 then
 		return "gid_" .. tostring(gid)
 	end
+
 	return "default"
 end
 
-local GameName = CurrentPlaceName()
-local GameId = ResolveGameId()
-local GameRoot = HYPERION_ROOT .. "/" .. GameId
-local AssetDir = GameRoot .. "/assets"
+local GameMeta  = CollectMetadata()
+local PlaceName = GameMeta.PlaceName
+local GameId    = resolveGameId(GameMeta)
+local GameRoot  = HYPERION_ROOT .. "/" .. GameId
+local AssetDir  = GameRoot .. "/assets"
 local ConfigDir = GameRoot .. "/configs"
 local SelectedFile = ConfigDir .. "/Selected.txt"
+
+-- One-time debug banner: shows collected metadata so real values can be
+-- copied into GameFamilies when extending support to a new game.
+if type(print) == "function" then
+	print("=== HYPERION GAME METADATA ===")
+	print("  Family:      " .. tostring(GameId))
+	print("  Game Name:   " .. tostring(PlaceName))
+	print("  PlaceId:     " .. tostring(GameMeta.PlaceId))
+	print("  GameId:      " .. tostring(GameMeta.GameId))
+	print("  CreatorName: " .. tostring(GameMeta.CreatorName))
+	print("  CreatorId:   " .. tostring(GameMeta.CreatorId))
+	print("  CreatorType: " .. tostring(GameMeta.CreatorType))
+end
+
+-- Legacy migration (idempotent, one-time copy). The previous system used
+-- short slugs ("bb", "fisch", "selllemons") under Hyperion/ directly, or
+-- stored configs under HyperionUI/. Copy any matching legacy data into
+-- Hyperion/<family>/configs/ without overwriting newer files.
+local LEGACY_SLUG_TO_FAMILY = {
+	bb         = "BladeBall",
+	fisch      = "Fisch",
+	selllemons = "SellLemons",
+	["evade"]  = "evade",
+	["mm2"]    = "mm2",
+}
+local LEGACY_ROOTS = { "Hyperion", "HyperionUI" }
+local function HasAny(path)
+	if type(isfolder) == "function" then
+		local ok, v = pcall(isfolder, path)
+		if ok and v then return true end
+	end
+	if type(isfile) == "function" then
+		local ok, v = pcall(isfile, path)
+		if ok and v then return true end
+	end
+	return false
+end
+local function DirIsEmpty(path)
+	if type(listfiles) ~= "function" then return true end
+	local ok, files = pcall(listfiles, path)
+	if not ok or type(files) ~= "table" then return true end
+	return #files == 0
+end
+local function CopyFile(src, dst)
+	if type(readfile) ~= "function" or type(writefile) ~= "function" then return false end
+	if isfile(dst) then return false end -- never overwrite newer data
+	local ok, raw = pcall(readfile, src)
+	if not ok or type(raw) ~= "string" then return false end
+	local dir = dst:match("^(.*)/[^/]+$")
+	if dir and dir ~= "" then
+		pcall(makefolder, dir)
+	end
+	return pcall(writefile, dst, raw)
+end
+local function resolveFamilyFromFolderName(leaf)
+	if not leaf or leaf == "" then return nil end
+	-- Explicit slug overrides (things like "bb" that don't match by name).
+	local explicit = LEGACY_SLUG_TO_FAMILY[leaf:lower()]
+	if explicit then return explicit end
+	-- Skip auto-generated gid_<num> folders from the previous resolver.
+	if leaf:match("^gid_") then return nil end
+	-- Otherwise reuse the name-based family matcher (exact first, then substring).
+	local folded = FoldName(leaf)
+	local stripped = folded:gsub("%s+", "")
+	local hit = GAME_FAMILY_BY_NAME[folded]
+		or GAME_FAMILY_BY_NAME[stripped]
+		or GAME_FAMILY_BY_NAME_EXACT[leaf]
+		or GAME_FAMILY_BY_NAME_EXACT[folded]
+		or GAME_FAMILY_BY_NAME_FOLDED[folded]
+	if hit then return hit end
+	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
+		if #keyword >= 3 and folded:find(keyword, 1, true) then
+			return family
+		end
+	end
+	return nil
+end
+local function MigrateLegacy()
+	if type(listfiles) ~= "function" then return end
+	for _, root in ipairs(LEGACY_ROOTS) do
+		local ok, entries = pcall(listfiles, root)
+		if ok and type(entries) == "table" then
+			for _, entry in ipairs(entries) do
+				local epath = tostring(type(entry) == "table" and entry.name or entry)
+				local leaf = epath:match("([^/\\]+)[/\\]?$") or epath
+				local family = resolveFamilyFromFolderName(leaf)
+				if family and (root ~= HYPERION_ROOT or leaf ~= family) then
+					local srcCfg = root .. "/" .. leaf .. "/configs"
+					local dstCfg = HYPERION_ROOT .. "/" .. family .. "/configs"
+					if not HasAny(dstCfg) or DirIsEmpty(dstCfg) then
+						local cok, cfiles = pcall(listfiles, srcCfg)
+						if cok and type(cfiles) == "table" and #cfiles > 0 then
+							pcall(makefolder, HYPERION_ROOT)
+							pcall(makefolder, HYPERION_ROOT .. "/" .. family)
+							pcall(makefolder, dstCfg)
+							pcall(makefolder, HYPERION_ROOT .. "/" .. family .. "/assets")
+							for _, f in ipairs(cfiles) do
+								local fp = tostring(type(f) == "table" and f.name or f)
+								if fp:match("%.json$") or fp:match("Selected%.txt$") then
+									local base = fp:match("([^/\\]+)$")
+									if base then
+										CopyFile(fp, dstCfg .. "/" .. base)
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+pcall(MigrateLegacy)
 
 local function CanWriteFiles()
 	return type(writefile) == "function" and type(readfile) == "function"
@@ -295,10 +534,12 @@ end
 
 local Library = {}
 function Library:GetGameId() return GameId end
-function Library:GetGameName() return GameName end
+function Library:GetGameName() return PlaceName end
 function Library:GetGameRoot() return GameRoot end
 function Library:GetAssetDirectory() return AssetDir end
 function Library:GetConfigDirectory() return ConfigDir end
+function Library:GetGameFamily() return GameId end
+function Library:GetGameMetadata() return GameMeta end
 local GetLastSelectedConfig = ReadSelectedConfig
 local SetLastSelectedConfig = WriteSelectedConfig
 local activeWindow = nil
@@ -388,6 +629,7 @@ function Library:CreateWindow(opts)
 		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
 		GroupTransparency = 1,
+		Active = true,
 		Parent = Gui,
 	})
 	Corner(Main, 12)
@@ -419,6 +661,7 @@ function Library:CreateWindow(opts)
 		Name = "Header",
 		Size = UDim2.new(1, 0, 0, HEADER_H),
 		BackgroundTransparency = 1,
+		Active = true,
 		ZIndex = 6,
 		Parent = Main,
 	})
@@ -2374,6 +2617,7 @@ end
 		BorderSizePixel = 0,
 		GroupTransparency = 1,
 		Visible = false,
+		Active = true,
 		ZIndex = 20,
 		Parent = Gui,
 	})

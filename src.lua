@@ -197,66 +197,103 @@ end
 --   Hyperion/<GameFamily>/configs/
 --   Hyperion/<GameFamily>/configs/Selected.txt  (last chosen config, per family)
 --
--- Game families (BladeBall, Fisch, SellLemons, etc.) are resolved at load
--- time from game metadata collected by CollectMetadata/ResolveGameId.
--- All paths, configs, and assets derive from the resolved family.
+-- Game families are resolved at load time by matching the current
+-- UniverseId (game.GameId) against the hardcoded verified GameList table.
+-- The resolved GameFamily folder name determines ALL asset and config paths
+-- (see HYPERION_ROOT).
 -- ===========================================================================
 local HYPERION_ROOT = "Hyperion"
 
--- Game-family definitions. Each key is the logical folder name under Hyperion/.
--- CreatorId is the primary signal; GameIds/PlaceIds provide additional matching.
--- Only verified metadata goes here. Blade Ball and Sell Lemons fall back to
--- GAME_FAMILY_BY_NAME until their verified creator/universe ids are populated
--- (verify by launching each game and reading the debug output printed below).
-local GameFamilies = {
-	Fisch = {
-		CreatorId   = 1815459992,
+-- ===========================================================================
+-- Game identification (single source of truth).
+--
+-- The game is identified by its UniverseId (game.GameId), which is shared by
+-- every place of the same experience (main, matchmaking, ranked, practice...).
+-- CreatorName is the supporting verification identity. PlaceId is collected
+-- for debugging only and is NEVER used as the identity or the folder name.
+--
+-- Supported games are in the hardcoded GameList table below. Each entry
+-- carries: GameName (for the folder label), UniverseId (primary identity),
+-- CreatorName + CreatorId (for verification), and a list of known PlaceIds
+-- (for debug only). To add a new supported game: add one entry per universe
+-- to GameList and ensure the family name exists in GAME_FAMILY_BY_NAME.
+--
+-- A game is classified ONLY when its UniverseId matches a verified entry and
+-- the creator identity does not contradict it. Unknown games never resolve
+-- into a known family; they get an isolated "gid_<universeId>" folder.
+-- ===========================================================================
+
+-- Game name (folded) -> logical family folder label. Used to name verified
+-- gamelist entries and to interpret legacy folders during migration; never
+-- used on its own to classify the current game.
+local GAME_FAMILY_BY_NAME = {
+	["blade ball"]        = "BladeBall",
+	["bladeball"]         = "BladeBall",
+	["fisch"]             = "Fisch",
+	["sell lemons"]       = "SellLemons",
+	["selllemons"]        = "SellLemons",
+	["murder mystery 2"]  = "mm2",
+	["murdermystery2"]    = "mm2",
+	["evade"]             = "evade",
+	["pet simulator 99"]  = "PetSim99",
+	["petsim99"]          = "PetSim99",
+}
+
+-- Every supported game in one table. Each entry is keyed by UniverseId
+-- internally and carries verified identity values that the resolver compares
+-- against the live game environment. All values were verified through real
+-- metadata reads or from the gamelist.txt reference.
+local GameList = {
+	{
+		GameName    = "Blade Ball",
+		UniverseId  = 4777817887,
+		CreatorName = "Wiggity.",
+		CreatorId   = 3044021115,
+		CreatorType = "Group",
+		PlaceIds    = { 13772394625, 15234596844 },
+	},
+	{
+		GameName    = "Sell Lemons 🍋",
+		UniverseId  = 7395930870,
+		CreatorName = "BloxByte Games",
+		CreatorId   = 909228726,
+		CreatorType = "Group",
+		PlaceIds    = { 79268393072444 },
+	},
+	{
+		GameName    = "Fisch",
+		UniverseId  = 5750914919,
 		CreatorName = "Fisching",
-		GameIds     = { 5750914919 },
+		CreatorId   = 1815459992,
+		CreatorType = "User",
 		PlaceIds    = { 131716211654599 },
 	},
-	BladeBall = {
-		CreatorId   = nil,   -- populate after verifying via the debug banner
-		CreatorName = nil,
-		GameIds     = {},
-		PlaceIds    = {},
+	{
+		GameName    = "Murder Mystery 2",
+		UniverseId  = 66654135,
+		CreatorName = "Nikilis",
+		CreatorId   = 1848960,
+		CreatorType = "User",
+		PlaceIds    = { 142823291 },
 	},
-	SellLemons = {
-		CreatorId   = nil,
-		CreatorName = nil,
-		GameIds     = {},
-		PlaceIds    = {},
+	{
+		GameName    = "Pet Simulator 99",
+		UniverseId  = 3317771874,
+		CreatorName = "BIG Games Pets",
+		CreatorId   = 544431964,
+		CreatorType = "Group",
+		PlaceIds    = { 8737899170 },
 	},
 }
 
--- Populate the fast lookup tables from GameFamilies. Runs once at load.
-local GAME_FAMILY_BY_CREATOR_ID = {}
-local GAME_FAMILY_BY_GAME_ID    = {}
-local GAME_FAMILY_BY_PLACE_ID   = {}
-do
-	for family, def in pairs(GameFamilies) do
-		if def.CreatorId then
-			GAME_FAMILY_BY_CREATOR_ID[def.CreatorId] = family
-		end
-		for _, gid in ipairs(def.GameIds or {}) do
-			GAME_FAMILY_BY_GAME_ID[gid] = family
-		end
-		for _, pid in ipairs(def.PlaceIds or {}) do
-			GAME_FAMILY_BY_PLACE_ID[pid] = family
-		end
+-- UniverseId -> verified entry. All places of one experience share the id,
+-- so any sub-place of a supported game resolves to the same family.
+local GAMELIST_BY_UNIVERSE = {}
+for _, e in ipairs(GameList) do
+	if e.UniverseId and e.UniverseId ~= 0 then
+		GAMELIST_BY_UNIVERSE[e.UniverseId] = e
 	end
 end
-
-local GAME_FAMILY_BY_NAME = {
-	["blade ball"]       = "BladeBall",
-	["bladeball"]        = "BladeBall",
-	["fisch"]            = "Fisch",
-	["sell lemons"]      = "SellLemons",
-	["selllemons"]       = "SellLemons",
-	["murder mystery 2"] = "mm2",
-	["murdermystery2"]   = "mm2",
-	["evade"]            = "evade",
-}
 
 local function FoldName(text)
 	return tostring(text or ""):lower():gsub("[^%w]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
@@ -266,6 +303,13 @@ local function SlugName(text)
 	local s = FoldName(text):gsub("%s+", "_")
 	if s == "" then return nil end
 	if #s > 32 then s = s:sub(1, 32) end
+	return s
+end
+
+-- Creator names such as "Wiggity." vs "Wiggity" must compare equal.
+local function NormalizeCreator(text)
+	local s = tostring(text or ""):lower():gsub("[^%w%s]", "")
+	s = s:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 	return s
 end
 
@@ -284,23 +328,36 @@ local function CurrentPlaceName()
 	return nil
 end
 
--- Fuzzy name match for game families (precomputed).
-local GAME_FAMILY_BY_NAME_EXACT = {}
-local GAME_FAMILY_BY_NAME_FOLDED = {}
-do
-	for name, family in pairs(GAME_FAMILY_BY_NAME) do
-		GAME_FAMILY_BY_NAME_EXACT[name] = family
-		local folded = FoldName(name)
-		if folded ~= name then
-			GAME_FAMILY_BY_NAME_FOLDED[folded] = family
+-- Family folder label for a VERIFIED game name (UniverseId already matched).
+-- Exact/folded name first, then longest keyword containment so that every
+-- place of the experience ("Blade Ball: Training Mode", "Blade Ball Ranked",
+-- ...) shares the same family folder.
+local function FamilyForVerifiedName(gameName)
+	if not gameName then return nil end
+	local folded = FoldName(gameName)
+	if folded == "" then return nil end
+	local hit = GAME_FAMILY_BY_NAME[folded] or GAME_FAMILY_BY_NAME[folded:gsub("%s+", "")]
+	if hit then return hit end
+	local best, bestLen = nil, 0
+	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
+		if #keyword >= 3 and #keyword > bestLen and folded:find(keyword, 1, true) then
+			best, bestLen = family, #keyword
 		end
 	end
+	if best then return best end
+	-- Verified entry without an explicit family label: derive a stable slug
+	-- from the official game name in the list.
+	return SlugName(gameName)
 end
 
+-- Collected metadata for the current Roblox environment. Values come from
+-- the DataModel + MarketplaceService; never guessed. getgenv()
+-- .HyperionGameMetadataOverride can force values through this exact path for
+-- validation/debugging; it is inert when unset.
 local function CollectMetadata()
-	local okPid, pid   = pcall(function() return game.PlaceId end)
-	local okGid, gid   = pcall(function() return game.GameId end)
-	local name         = CurrentPlaceName()
+	local okPid, pid = pcall(function() return game.PlaceId end)
+	local okGid, gid = pcall(function() return game.GameId end)
+	local name = CurrentPlaceName()
 	local creatorName, creatorId, creatorType
 
 	local okInfo, info = pcall(function()
@@ -319,68 +376,78 @@ local function CollectMetadata()
 		end
 	end
 
-	return {
-		PlaceId      = okPid and pid or nil,
-		GameId       = okGid and gid or nil,
-		PlaceName    = name,
-		CreatorName  = creatorName,
-		CreatorId    = creatorId,
-		CreatorType  = creatorType,
+	local meta = {
+		PlaceId     = okPid and pid or nil,
+		UniverseId  = okGid and gid or nil,
+		PlaceName   = name,
+		CreatorName = creatorName,
+		CreatorId   = creatorId,
+		CreatorType = creatorType,
 	}
-end
+	meta.GameId = meta.UniverseId -- compatibility alias; same value.
 
-local function resolveGameId(meta)
-	local pid  = meta.PlaceId
-	local gid  = meta.GameId
-	local name = meta.PlaceName
-
-	-- 1) Universe/GameId exact override.
-	if gid and gid ~= 0 and GAME_FAMILY_BY_GAME_ID[gid] then
-		return GAME_FAMILY_BY_GAME_ID[gid]
-	end
-
-	-- 2) PlaceId exact override.
-	if pid and GAME_FAMILY_BY_PLACE_ID[pid] then
-		return GAME_FAMILY_BY_PLACE_ID[pid]
-	end
-
-	-- 3) CreatorId + GameId (strongest family signal).
-	if gid and gid ~= 0 and meta.CreatorId and GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId] then
-		local family = GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId]
-		if GAME_FAMILY_BY_GAME_ID[gid] == family or GAME_FAMILY_BY_GAME_ID[gid] == nil then
-			return family
+	local override
+	pcall(function()
+		local g = getgenv()
+		local o = g and g.HyperionGameMetadataOverride
+		if type(o) == "table" then override = o end
+	end)
+	if override then
+		meta.PlaceId     = tonumber(override.PlaceId) or meta.PlaceId
+		meta.UniverseId  = tonumber(override.UniverseId or override.GameId) or meta.UniverseId
+		meta.GameId      = meta.UniverseId
+		if type(override.PlaceName) == "string" and override.PlaceName ~= "" then
+			meta.PlaceName = override.PlaceName
+		end
+		if type(override.CreatorName) == "string" and override.CreatorName ~= "" then
+			meta.CreatorName = override.CreatorName
+		end
+		meta.CreatorId = tonumber(override.CreatorId) or meta.CreatorId
+		if type(override.CreatorType) == "string" and override.CreatorType ~= "" then
+			meta.CreatorType = override.CreatorType
 		end
 	end
+	return meta
+end
 
-	-- 4) CreatorId alone (cross-place family detection).
-	if meta.CreatorId and GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId] then
-		return GAME_FAMILY_BY_CREATOR_ID[meta.CreatorId]
+-- The one authoritative game-family resolver.
+-- Returns the logical family folder name for the given metadata.
+local function resolveGameId(meta)
+	local uid = tonumber(meta and meta.UniverseId)
+	if not uid or uid == 0 then
+		-- UniverseId unavailable: cannot identify the game; neutral folder.
+		return "default"
 	end
 
-	-- 5) Name-based lookup: exact match first, then substring prefix.
-	if name then
-		local folded = FoldName(name)
-		local stripped = folded:gsub("%s+", "")
-		local hit = GAME_FAMILY_BY_NAME_EXACT[name]
-			or GAME_FAMILY_BY_NAME_EXACT[folded]
-			or GAME_FAMILY_BY_NAME_FOLDED[folded]
-			or GAME_FAMILY_BY_NAME[folded]
-			or GAME_FAMILY_BY_NAME[stripped]
-		if hit then return hit end
-		-- Substring fallback: "Blade Ball Matchmaking" contains "blade ball".
-		for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
-			if #keyword >= 3 and folded:find(keyword, 1, true) then
+	local entry = GAMELIST_BY_UNIVERSE[uid]
+	if entry then
+		-- UniverseId is the primary identity. Verify the creator identity when
+		-- both sides carry it; a contradiction means the entry data is stale or
+		-- spoofed, so refuse to classify instead of guessing.
+		local verified = true
+		local liveName = meta.CreatorName
+		local liveId   = meta.CreatorId
+		if (liveName and liveName ~= "") and entry.CreatorName then
+			local namesMatch = NormalizeCreator(liveName) == NormalizeCreator(entry.CreatorName)
+			local idsMatch   = liveId and entry.CreatorId and tonumber(liveId) == tonumber(entry.CreatorId)
+			verified = namesMatch or idsMatch == true
+			if liveId and entry.CreatorId and idsMatch == false and not namesMatch then
+				verified = false
+			end
+		elseif liveId and entry.CreatorId then
+			verified = tonumber(liveId) == tonumber(entry.CreatorId)
+		end
+		if verified then
+			local family = FamilyForVerifiedName(entry.GameName)
+			if family and family ~= "" then
 				return family
 			end
 		end
 	end
 
-	-- 6) UniverseId/folder fallback (ensures uniqueness for unknown games).
-	if gid and gid ~= 0 then
-		return "gid_" .. tostring(gid)
-	end
-
-	return "default"
+	-- Not in the verified list: never mapped onto a known family. Isolated,
+	-- stable per-experience fallback folder.
+	return "gid_" .. tostring(uid)
 end
 
 local GameMeta  = CollectMetadata()
@@ -391,8 +458,9 @@ local AssetDir  = GameRoot .. "/assets"
 local ConfigDir = GameRoot .. "/configs"
 local SelectedFile = ConfigDir .. "/Selected.txt"
 
--- One-time debug banner: shows collected metadata so real values can be
--- copied into GameFamilies when extending support to a new game.
+-- One-time debug banner: shows collected metadata and the resolved family so
+-- real values can be verified against the hardcoded GameList when extending
+-- support to a new game.
 if type(print) == "function" then
 	print("=== HYPERION GAME METADATA ===")
 	print("  Family:      " .. tostring(GameId))
@@ -402,6 +470,11 @@ if type(print) == "function" then
 	print("  CreatorName: " .. tostring(GameMeta.CreatorName))
 	print("  CreatorId:   " .. tostring(GameMeta.CreatorId))
 	print("  CreatorType: " .. tostring(GameMeta.CreatorType))
+	print("  GameList:    " .. tostring(#GameList) .. " verified entries")
+	local matched = GameMeta.UniverseId and GAMELIST_BY_UNIVERSE[GameMeta.UniverseId]
+	print("  GamelistMatch: " .. (matched
+		and (tostring(matched.GameName) .. " [" .. tostring(matched.UniverseId) .. "]")
+		or "none (unknown game)"))
 end
 
 -- Legacy migration (idempotent, one-time copy). The previous system used
@@ -451,21 +524,19 @@ local function resolveFamilyFromFolderName(leaf)
 	if explicit then return explicit end
 	-- Skip auto-generated gid_<num> folders from the previous resolver.
 	if leaf:match("^gid_") then return nil end
-	-- Otherwise reuse the name-based family matcher (exact first, then substring).
+	-- Otherwise reuse the name-based family matcher (exact first, then
+	-- longest keyword containment, same rule as verified classification).
 	local folded = FoldName(leaf)
 	local stripped = folded:gsub("%s+", "")
-	local hit = GAME_FAMILY_BY_NAME[folded]
-		or GAME_FAMILY_BY_NAME[stripped]
-		or GAME_FAMILY_BY_NAME_EXACT[leaf]
-		or GAME_FAMILY_BY_NAME_EXACT[folded]
-		or GAME_FAMILY_BY_NAME_FOLDED[folded]
+	local hit = GAME_FAMILY_BY_NAME[folded] or GAME_FAMILY_BY_NAME[stripped]
 	if hit then return hit end
+	local best, bestLen = nil, 0
 	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
-		if #keyword >= 3 and folded:find(keyword, 1, true) then
-			return family
+		if #keyword >= 3 and #keyword > bestLen and folded:find(keyword, 1, true) then
+			best, bestLen = family, #keyword
 		end
 	end
-	return nil
+	return best
 end
 local function MigrateLegacy()
 	if type(listfiles) ~= "function" then return end

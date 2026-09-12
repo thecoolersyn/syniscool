@@ -189,7 +189,118 @@ local function PreviousWindow()
 	end
 	return nil
 end
+-- ===========================================================================
+-- Game-scoped storage. Owned entirely by the UI source: the main game script
+-- never has to say which game it is or where anything is stored.
+--
+--   Hyperion/<game-id>/assets/
+--   Hyperion/<game-id>/configs/
+--   Hyperion/<game-id>/configs/Selected.txt   (last chosen config, per game)
+-- ===========================================================================
+local HYPERION_ROOT = "Hyperion"
+
+-- Short identifiers for known games; extend here and nothing else changes.
+local GAME_ID_BY_NAME = {
+	["blade ball"]      = "bb",
+	["bladeball"]       = "bb",
+	["fisch"]           = "fisch",
+	["murder mystery 2"] = "mm2",
+	["murdermystery2"]  = "mm2",
+	["evade"]           = "evade",
+}
+
+-- Exact overrides keyed by universe id when a name cannot be resolved.
+local GAME_ID_BY_UNIVERSE = {}
+
+local function FoldName(text)
+	return tostring(text or ""):lower():gsub("[^%w]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+end
+
+local function SlugName(text)
+	local s = FoldName(text):gsub("%s+", "_")
+	if s == "" then return nil end
+	if #s > 32 then s = s:sub(1, 32) end
+	return s
+end
+
+local function CurrentPlaceName()
+	local ok, name = pcall(function() return game.PlaceName end)
+	if ok and type(name) == "string" and name ~= "" then return name end
+	-- Some executors hand back a stub DataModel with no PlaceName; the
+	-- marketplace lookup is the reliable fallback there.
+	local ok2, info = pcall(function()
+		return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset)
+	end)
+	if ok2 and type(info) == "table" then
+		local n = tostring(info.Name or "")
+		if n ~= "" then return n end
+	end
+	return nil
+end
+
+local function ResolveGameId()
+	local okGid, gid = pcall(function() return game.GameId end)
+	if okGid and gid and GAME_ID_BY_UNIVERSE[gid] then
+		return GAME_ID_BY_UNIVERSE[gid]
+	end
+	local name = CurrentPlaceName()
+	if name then
+		local folded = FoldName(name)
+		local known = GAME_ID_BY_NAME[folded] or GAME_ID_BY_NAME[folded:gsub("%s+", "")]
+		if known then return known end
+		local slug = SlugName(name)
+		if slug then return slug end
+	end
+	if okGid and gid and gid ~= 0 then
+		-- Unique per experience, so two unknown games can never share a folder.
+		return "gid_" .. tostring(gid)
+	end
+	return "default"
+end
+
+local GameName = CurrentPlaceName()
+local GameId = ResolveGameId()
+local GameRoot = HYPERION_ROOT .. "/" .. GameId
+local AssetDir = GameRoot .. "/assets"
+local ConfigDir = GameRoot .. "/configs"
+local SelectedFile = ConfigDir .. "/Selected.txt"
+
+local function CanWriteFiles()
+	return type(writefile) == "function" and type(readfile) == "function"
+end
+
+local function EnsureDir(path)
+	if type(makefolder) ~= "function" then return end
+	pcall(makefolder, HYPERION_ROOT)
+	pcall(makefolder, GameRoot)
+	pcall(makefolder, AssetDir)
+	pcall(makefolder, ConfigDir)
+end
+EnsureDir()
+
+local function ReadSelectedConfig()
+	if not CanWriteFiles() then return nil end
+	local ok, raw = pcall(readfile, SelectedFile)
+	if not ok or type(raw) ~= "string" then return nil end
+	local name = raw:gsub("^%s+", ""):gsub("%s+$", ""):gsub("[\r\n]", "")
+	if name == "" then return nil end
+	return name
+end
+
+local function WriteSelectedConfig(name)
+	if not CanWriteFiles() or not name then return false end
+	EnsureDir()
+	return pcall(writefile, SelectedFile, tostring(name))
+end
+
 local Library = {}
+function Library:GetGameId() return GameId end
+function Library:GetGameName() return GameName end
+function Library:GetGameRoot() return GameRoot end
+function Library:GetAssetDirectory() return AssetDir end
+function Library:GetConfigDirectory() return ConfigDir end
+local GetLastSelectedConfig = ReadSelectedConfig
+local SetLastSelectedConfig = WriteSelectedConfig
 local activeWindow = nil
 function Library:Notify(n, ...)
 	if activeWindow then
@@ -713,6 +824,7 @@ end
 	local currentTab = nil
 	local uiVisible = false
 	local indicatorConn = nil
+	local destroyed = false
 	local smoothSliders = {}
 	local SMOOTH_SPEED = 12
 	local notifyLocation = opts.NotifyLocation or "Corner Right"
@@ -2385,8 +2497,11 @@ end
 			end
 		end)
 	end
-	local CONFIG_DIR = "HyperionUI/Configs"
+	local CONFIG_DIR = ConfigDir
 	local CONFIG_DEFAULT = "Default"
+	-- Filenames owned by the main script's own store that shares this folder.
+	-- They must never appear as UI-selectable configs nor become the fallback.
+	local CONFIG_RESERVED = { HyperionMain = true, Autosave = true }
 	local configCache = {}
 	local configWatchers = {}
 	local selectedConfig = CONFIG_DEFAULT
@@ -2413,7 +2528,7 @@ end
 			if ok and type(files) == "table" then
 				for _, path in ipairs(files) do
 					local base = tostring(path):match("([^/\\]+)%.json$")
-					if base and #base > 0 then
+					if base and #base > 0 and not CONFIG_RESERVED[base] then
 						configCache[base] = true
 					end
 				end
@@ -2495,7 +2610,6 @@ end
 		return ok
 	end
 	refreshConfigCache()
-	local notifyLocationDd, configDd, guiKeyEntry
 	panelLabel("Global Settings", 1)
 	local keyRow = New("Frame", {
 		Name = "GuiKeyRow",
@@ -2560,11 +2674,13 @@ end
 		Default = selectedConfig,
 		Callback = function(v)
 			if loadConfigFile(v) then
-				selectedConfig = v
+				refreshConfigDropdown(v)
+			else
+				refreshConfigDropdown()
 			end
 		end,
 	})
-	local function refreshConfigDropdown(selectName)
+	local function refreshConfigDropdown(selectName, skipPersist)
 		refreshConfigCache()
 		local names = configNames()
 		configDd:SetOptions(names)
@@ -2576,6 +2692,9 @@ end
 		if not ok then target = names[1] end
 		selectedConfig = target
 		configDd:SetSilent(target)
+		if not skipPersist then
+			pcall(SetLastSelectedConfig, target)
+		end
 		for _, dd in ipairs(configWatchers) do
 			if dd and dd.SetOptions then
 				dd:SetOptions(names)
@@ -2758,7 +2877,7 @@ end
 				return
 			end
 			refreshConfigCache()
-			if configCache[name] then
+			if configCache[name] or CONFIG_RESERVED[name] then
 				hint.Text = "A config named '" .. name .. "' already exists"
 				return
 			end
@@ -2805,7 +2924,9 @@ end
 			end
 		end,
 	})
-	refreshConfigDropdown()
+	-- Boot-time UI sync only: must NOT persist, or it would overwrite the
+	-- remembered selection before the deferred auto-load reads it.
+	refreshConfigDropdown(nil, true)
 	function Window:OpenGlobalSettings() setPanel(true) end
 	function Window:CloseGlobalSettings() setPanel(false) end
 	function Window:IsGlobalSettingsOpen() return panelOpen end
@@ -2816,7 +2937,7 @@ end
 	end
 	function Window:SaveConfig(name)
 		local target = sanitizeName(name or selectedConfig)
-		if not target then return false end
+		if not target or CONFIG_RESERVED[target] then return false end
 		if name and name ~= selectedConfig then
 			refreshConfigDropdown(target)
 		end
@@ -2834,12 +2955,18 @@ end
 		local target = name or selectedConfig
 		if target == CONFIG_DEFAULT then return false end
 		local ok = deleteConfigFile(target)
-		refreshConfigDropdown(CONFIG_DEFAULT)
+		-- Prefer a remaining config over Default; Default only if nothing left.
+		refreshConfigCache()
+		local fallback = CONFIG_DEFAULT
+		for _, cand in ipairs(configNames()) do
+			if cand ~= CONFIG_DEFAULT then fallback = cand break end
+		end
+		refreshConfigDropdown(fallback)
 		return ok
 	end
 	function Window:AddConfig(name)
 		local target = sanitizeName(name)
-		if not target then return nil end
+		if not target or CONFIG_RESERVED[target] then return nil end
 		refreshConfigCache()
 		if configCache[target] then return nil end
 		if not saveConfigFile(target) then return nil end
@@ -2864,6 +2991,7 @@ end
 		setVisible(false)
 	end
 	function Window:Destroy()
+		destroyed = true
 		ReleaseConns()
 		if indicatorConn then
 			pcall(function() indicatorConn:Disconnect() end)
@@ -2871,6 +2999,46 @@ end
 		end
 		pcall(function() Gui:Destroy() end)
 	end
+	-- Re-apply this game's remembered config. Deferred because modules are
+	-- registered after CreateWindow returns; silent so startup stays quiet.
+	function Window:LoadRememberedConfig(silent)
+		local wanted = ReadSelectedConfig()
+		if not wanted or wanted == CONFIG_DEFAULT then
+			refreshConfigDropdown()
+			return Window:GetSelectedConfig()
+		end
+		refreshConfigCache()
+		if not configCache[wanted] then
+			-- Deleted or never existed: fall back and remember the valid choice.
+			refreshConfigDropdown(CONFIG_DEFAULT)
+			return Window:GetSelectedConfig()
+		end
+		if silent == true then
+			local ok, raw = pcall(readfile, configFile(wanted))
+			local decoded
+			if ok and type(raw) == "string" and #raw > 0 then
+				pcall(function() decoded = HttpService:JSONDecode(raw) end)
+			end
+			if type(decoded) == "table" then
+				applyConfigData(decoded)
+				refreshConfigDropdown(wanted)
+				return wanted
+			end
+			refreshConfigDropdown(CONFIG_DEFAULT)
+			return Window:GetSelectedConfig()
+		end
+		if loadConfigFile(wanted) then
+			refreshConfigDropdown(wanted)
+			return wanted
+		end
+		refreshConfigDropdown(CONFIG_DEFAULT)
+		return Window:GetSelectedConfig()
+	end
+	EnsureDir()
+	task.defer(function()
+		if destroyed then return end
+		pcall(function() Window:LoadRememberedConfig(true) end)
+	end)
 	SetNotifyLocation(notifyLocation)
 	setVisible(true)
 	do

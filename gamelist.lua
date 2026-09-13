@@ -54,4 +54,11 @@ local gamelist = {
         UniverseId = 10336278580,
         CreatorName = "The Ore Drillers",
     },
+
+    {
+    GameName = "Blade Ball",
+    GameConfig = "BB",
+    UniverseId = 4777817887,
+    CreatorName = "Wiggity.",
+},
 }

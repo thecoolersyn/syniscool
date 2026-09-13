@@ -202,34 +202,53 @@ end
 --   Hyperion/<GameFamily>/configs/Selected.txt  (last chosen config, per family)
 --
 -- Game families are resolved at load time by matching the current
--- UniverseId (game.GameId) against the hardcoded verified GameList table.
--- The resolved GameFamily folder name determines ALL asset and config paths
--- (see HYPERION_ROOT).
+-- UniverseId (game.GameId) + CreatorName against the REMOTE game list
+-- (see GAME_LIST_URL). The supported-game database is NOT hardcoded here;
+-- the GitHub-hosted file is the single source of truth. The resolved
+-- GameFamily folder name determines ALL asset and config paths.
 -- ===========================================================================
 local HYPERION_ROOT = "Hyperion"
 
 -- ===========================================================================
--- Game identification (single source of truth).
+-- Remote game list (single source of truth for supported games).
 --
--- The game is identified by its UniverseId (game.GameId), which is shared by
--- every place of the same experience (main, matchmaking, ranked, practice...).
--- CreatorName is the supporting verification identity. PlaceId is collected
--- for debugging only and is NEVER used as the identity or the folder name.
+-- newui.lua downloads the game list from GitHub at initialization, validates
+-- it, and uses it to classify the current game. Each valid entry provides:
+--   GameName      string   official game name (data only; never executed)
+--   GameConfig    string?  short code (kept as a legacy folder alias only;
+--                          the logical folder is NEVER the abbreviation)
+--   UniverseId    number   primary identity (shared by every place of the
+--                          same experience)
+--   CreatorName   string   supporting verification identity
+--   CreatorId     number?  optional extra verification
+--   Folder        string?  optional explicit logical folder label
+--   LegacyFolders string[] optional legacy folder names to migrate from
 --
--- Supported games are in the hardcoded GameList table below. Each entry
--- carries: GameName (for the folder label), UniverseId (primary identity),
--- CreatorName + CreatorId (for verification), and a list of known PlaceIds
--- (for debug only). To add a new supported game: add one entry per universe
--- to GameList and ensure the family name exists in GAME_FAMILY_BY_NAME.
+-- GAME_LIST_URL may also be overridden at runtime through
+-- getgenv().HyperionGameListUrl without touching this source. An empty URL
+-- means "remote fetching disabled".
 --
--- A game is classified ONLY when its UniverseId matches a verified entry and
--- the creator identity does not contradict it. Unknown games never resolve
--- into a known family; they get an isolated "gid_<universeId>" folder.
+-- Failure policy: if the remote list cannot be downloaded/parses invalidly,
+-- the last known-good copy cached under Hyperion/game-list-cache.txt is
+-- used; if that is missing too, no game is classified and every game gets an
+-- isolated "gid_<universeId>" folder. A remote failure NEVER breaks the UI
+-- and NEVER makes one game load another game's configs. Malformed individual
+-- entries are skipped without invalidating the rest of the list. The
+-- downloaded content is treated strictly as data — it is never loadstring'ed
+-- or executed, and folder names are sanitized against path traversal.
 -- ===========================================================================
+local GAME_LIST_URL = "https://raw.githubusercontent.com/thecoolersyn/syniscool/refs/heads/main/gamelist.lua"
+local GAME_LIST_CACHE = HYPERION_ROOT .. "/game-list-cache.txt"
 
--- Game name (folded) -> logical family folder label. Used to name verified
--- gamelist entries and to interpret legacy folders during migration; never
--- used on its own to classify the current game.
+-- ===========================================================================
+-- Naming rules (NOT the game database). Game identity — which games exist,
+-- their UniverseIds and CreatorNames — lives ONLY in the remote game list.
+-- This table only maps a known display name to its preferred logical folder
+-- spelling (Blade Ball -> BladeBall, never the "BB" short code) and doubles
+-- as the legacy-folder interpreter during migration. Unknown remote games
+-- fall back to a stable slug derived from their own GameName, so adding a
+-- game never requires touching this source.
+-- ===========================================================================
 local GAME_FAMILY_BY_NAME = {
 	["blade ball"]        = "BladeBall",
 	["bladeball"]         = "BladeBall",
@@ -243,71 +262,214 @@ local GAME_FAMILY_BY_NAME = {
 	["petsim99"]          = "PetSim99",
 }
 
--- Every supported game in one table. Each entry is keyed by UniverseId
--- internally and carries verified identity values that the resolver compares
--- against the live game environment. All values were verified through real
--- metadata reads or from the gamelist.txt reference.
-local GameList = {
-	{
-		GameName    = "Blade Ball",
-		UniverseId  = 4777817887,
-		CreatorName = "Wiggity.",
-		CreatorId   = 3044021115,
-		CreatorType = "Group",
-		PlaceIds    = { 13772394625, 15234596844 },
-	},
-	{
-		GameName    = "Sell Lemons 🍋",
-		UniverseId  = 7395930870,
-		CreatorName = "BloxByte Games",
-		CreatorId   = 909228726,
-		CreatorType = "Group",
-		PlaceIds    = { 79268393072444 },
-	},
-	{
-		GameName    = "Fisch",
-		UniverseId  = 5750914919,
-		CreatorName = "Fisching",
-		CreatorId   = 1815459992,
-		CreatorType = "User",
-		PlaceIds    = { 131716211654599 },
-	},
-	{
-		GameName    = "Murder Mystery 2",
-		UniverseId  = 66654135,
-		CreatorName = "Nikilis",
-		CreatorId   = 1848960,
-		CreatorType = "User",
-		PlaceIds    = { 142823291 },
-	},
-	{
-		GameName    = "Pet Simulator 99",
-		UniverseId  = 3317771874,
-		CreatorName = "BIG Games Pets",
-		CreatorId   = 544431964,
-		CreatorType = "Group",
-		PlaceIds    = { 8737899170 },
-	},
-}
-
--- UniverseId -> verified entry. All places of one experience share the id,
--- so any sub-place of a supported game resolves to the same family.
-local GAMELIST_BY_UNIVERSE = {}
-for _, e in ipairs(GameList) do
-	if e.UniverseId and e.UniverseId ~= 0 then
-		GAMELIST_BY_UNIVERSE[e.UniverseId] = e
-	end
-end
-
 local function FoldName(text)
 	return tostring(text or ""):lower():gsub("[^%w]+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
 local function SlugName(text)
-	local s = FoldName(text):gsub("%s+", "_")
+	local s = tostring(text or ""):gsub("[^%w%s]", ""):gsub("%s+", "")
 	if s == "" then return nil end
 	if #s > 32 then s = s:sub(1, 32) end
 	return s
+end
+
+-- Logical folder for a remote entry's GameName: exact/folded alias first,
+-- then longest keyword containment (so "Blade Ball: Training Mode" and
+-- "Blade Ball Ranked" share one family), then a stable slug. Never an
+-- abbreviation such as "BB".
+local function FamilyForVerifiedName(gameName)
+	if not gameName then return nil end
+	local folded = FoldName(gameName)
+	if folded == "" then return nil end
+	local hit = GAME_FAMILY_BY_NAME[folded] or GAME_FAMILY_BY_NAME[folded:gsub("%s+", "")]
+	if hit then return hit end
+	local best, bestLen = nil, 0
+	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
+		if #keyword >= 3 and #keyword > bestLen and folded:find(keyword, 1, true) then
+			best, bestLen = family, #keyword
+		end
+	end
+	if best then return best end
+	return SlugName(gameName)
+end
+
+local function HttpGetString(url)
+	if type(url) ~= "string" or url == "" then return nil end
+	local req
+	if type(request) == "function" then
+		req = request
+	elseif type(syn) == "table" and type(syn.request) == "function" then
+		req = syn.request
+	elseif type(http_request) == "function" then
+		req = http_request
+	end
+	if req then
+		local ok, res = pcall(req, {
+			Url = url,
+			Method = "GET",
+			Headers = { ["Cache-Control"] = "no-cache" },
+		})
+		if ok and type(res) == "table" then
+			local code = tonumber(res.StatusCode)
+			if (code == nil or code == 200) and type(res.Body) == "string" and #res.Body > 0 then
+				return res.Body
+			end
+		end
+	end
+	local ok2, body = pcall(function() return game:HttpGet(url, true) end)
+	if ok2 and type(body) == "string" and #body > 0 then
+		return body
+	end
+	return nil
+end
+
+-- Sanitize a logical folder label coming from remote data: safe characters
+-- only, no traversal, bounded length. Returns nil for unusable values.
+local function SafeFolderName(text)
+	local s = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	s = s:gsub("[^%w_%.]", "")
+	if s == "" or s:sub(1, 1) == "." or s:find("%.%.") then return nil end
+	if #s > 32 then s = s:sub(1, 32) end
+	return s
+end
+
+-- Validate + normalize decoded remote rows into a clean entry list.
+-- Duplicate UniverseIds keep the first occurrence; malformed entries are
+-- skipped individually and never invalidate the rest of the list. The
+-- logical Folder is taken from an explicit Folder field when present,
+-- otherwise derived from GameName — the short GameConfig code ("BB") is
+-- treated as a legacy alias only, never as the folder.
+local function NormalizeGameList(rows)
+	if type(rows) ~= "table" then return nil end
+	local src = rows
+	if type(rows.games) == "table" then src = rows.games
+	elseif type(rows.Games) == "table" then src = rows.games end
+	if type(src) ~= "table" then return nil end
+	local list, seen = {}, {}
+	for _, e in pairs(src) do
+		if type(e) == "table" then
+			local uid = tonumber(e.UniverseId or e.GameId)
+			local gname = e.GameName or e.Name
+			if uid and uid >= 1 and uid < 1e18 and type(gname) == "string" and gname ~= "" then
+				uid = math.floor(uid)
+				local folder = SafeFolderName(e.Folder or e.GameFolder or e.LogicalFolder)
+					or FamilyForVerifiedName(gname)
+				if folder and not seen[uid] then
+					seen[uid] = true
+					local legacy = {}
+					if type(e.LegacyFolders) == "table" then
+						for _, lg in ipairs(e.LegacyFolders) do
+							local lgs = SafeFolderName(lg)
+							if lgs then legacy[#legacy + 1] = lgs end
+						end
+					end
+					local short = SafeFolderName(e.GameConfig)
+					if short then
+						legacy[#legacy + 1] = short
+						legacy[#legacy + 1] = short:lower()
+					end
+					local entry = {
+						GameName      = tostring(gname),
+						Folder        = folder,
+						UniverseId    = uid,
+						LegacyFolders = legacy,
+					}
+					local creator = e.CreatorName or e.Creator
+					if type(creator) == "string" and creator ~= "" then
+						entry.CreatorName = creator
+					end
+					entry.CreatorId = tonumber(e.CreatorId)
+					list[#list + 1] = entry
+				end
+			end
+		end
+	end
+	if #list == 0 then return nil end
+	return list
+end
+
+-- Extract rows from the remote Lua-table payload WITHOUT executing it:
+-- #121/#122 forbid running remote code, so only literal assignments inside
+-- innermost { } blocks are pattern-matched as data.
+local function ParseLuaTableRows(body)
+	if type(body) ~= "string" or not body:find("UniverseId") then return nil end
+	local rows = {}
+	for block in body:gmatch("{([^{}]-)}") do
+		if block:find("UniverseId") then
+			local row = {}
+			row.GameName = block:match('GameName%s*=%s*"([^"]*)"')
+				or block:match("GameName%s*=%s*'([^']*)'")
+			row.UniverseId = tonumber(block:match("UniverseId%s*=%s*(%d+)"))
+			row.CreatorName = block:match('CreatorName%s*=%s*"([^"]*)"')
+				or block:match("CreatorName%s*=%s*'([^']*)'")
+			row.CreatorId = tonumber(block:match("CreatorId%s*=%s*(%d+)"))
+			row.GameConfig = block:match('GameConfig%s*=%s*"([^"]*)"')
+			local lf = block:match("LegacyFolders%s*=%s*{([^{}]*)}")
+			if lf then
+				local arr = {}
+				for q in lf:gmatch('[\'"]([^\'"]+)[\'"]') do
+					arr[#arr + 1] = q
+				end
+				row.LegacyFolders = arr
+			end
+			rows[#rows + 1] = row
+		end
+	end
+	if #rows == 0 then return nil end
+	return rows
+end
+
+local function DecodeGameListBody(body)
+	if type(body) ~= "string" or #body == 0 then return nil end
+	local trimmed = body:gsub("^%s+", "")
+	if trimmed:sub(1, 1) == "{" or trimmed:sub(1, 1) == "[" then
+		local decoded
+		local ok = pcall(function() decoded = HttpService:JSONDecode(body) end)
+		if ok and type(decoded) == "table" then
+			return NormalizeGameList(decoded)
+		end
+	end
+	local rows = ParseLuaTableRows(body)
+	if rows then
+		return NormalizeGameList(rows)
+	end
+	return nil
+end
+
+local RemoteGameList = nil
+local GameListSource = "none"
+do
+	local url = GAME_LIST_URL
+	pcall(function()
+		local g = getgenv and getgenv()
+		if g and type(g.HyperionGameListUrl) == "string" and g.HyperionGameListUrl ~= "" then
+			url = g.HyperionGameListUrl
+		end
+	end)
+	local body = HttpGetString(url)
+	local list = DecodeGameListBody(body)
+	if list then
+		RemoteGameList = list
+		GameListSource = "remote"
+		pcall(makefolder, HYPERION_ROOT)
+		pcall(writefile, GAME_LIST_CACHE, body) -- refresh cache from remote success only
+	else
+		local okR, cached = pcall(readfile, GAME_LIST_CACHE)
+		local cachedList = okR and DecodeGameListBody(cached) or nil
+		if cachedList then
+			RemoteGameList = cachedList
+			GameListSource = "cache"
+		end
+	end
+end
+
+-- UniverseId -> verified entry. All places of one experience share the id,
+-- so any sub-place of a supported game resolves to the same family.
+local GAMELIST_BY_UNIVERSE = {}
+for _, e in ipairs(RemoteGameList or {}) do
+	if not GAMELIST_BY_UNIVERSE[e.UniverseId] then
+		GAMELIST_BY_UNIVERSE[e.UniverseId] = e
+	end
 end
 
 -- Creator names such as "Wiggity." vs "Wiggity" must compare equal.
@@ -330,28 +492,6 @@ local function CurrentPlaceName()
 		if n ~= "" then return n end
 	end
 	return nil
-end
-
--- Family folder label for a VERIFIED game name (UniverseId already matched).
--- Exact/folded name first, then longest keyword containment so that every
--- place of the experience ("Blade Ball: Training Mode", "Blade Ball Ranked",
--- ...) shares the same family folder.
-local function FamilyForVerifiedName(gameName)
-	if not gameName then return nil end
-	local folded = FoldName(gameName)
-	if folded == "" then return nil end
-	local hit = GAME_FAMILY_BY_NAME[folded] or GAME_FAMILY_BY_NAME[folded:gsub("%s+", "")]
-	if hit then return hit end
-	local best, bestLen = nil, 0
-	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
-		if #keyword >= 3 and #keyword > bestLen and folded:find(keyword, 1, true) then
-			best, bestLen = family, #keyword
-		end
-	end
-	if best then return best end
-	-- Verified entry without an explicit family label: derive a stable slug
-	-- from the official game name in the list.
-	return SlugName(gameName)
 end
 
 -- Collected metadata for the current Roblox environment. Values come from
@@ -415,7 +555,9 @@ local function CollectMetadata()
 end
 
 -- The one authoritative game-family resolver.
--- Returns the logical family folder name for the given metadata.
+-- Returns the logical family folder name for the given metadata. The folder
+-- label itself always comes from the remote game-list entry (never derived
+-- from UniverseId/PlaceId for a verified game).
 local function resolveGameId(meta)
 	local uid = tonumber(meta and meta.UniverseId)
 	if not uid or uid == 0 then
@@ -424,7 +566,7 @@ local function resolveGameId(meta)
 	end
 
 	local entry = GAMELIST_BY_UNIVERSE[uid]
-	if entry then
+	if entry and entry.Folder then
 		-- UniverseId is the primary identity. Verify the creator identity when
 		-- both sides carry it; a contradiction means the entry data is stale or
 		-- spoofed, so refuse to classify instead of guessing.
@@ -442,15 +584,13 @@ local function resolveGameId(meta)
 			verified = tonumber(liveId) == tonumber(entry.CreatorId)
 		end
 		if verified then
-			local family = FamilyForVerifiedName(entry.GameName)
-			if family and family ~= "" then
-				return family
-			end
+			return entry.Folder
 		end
 	end
 
-	-- Not in the verified list: never mapped onto a known family. Isolated,
-	-- stable per-experience fallback folder.
+	-- Not in the verified list (or the remote list is unavailable): never
+	-- mapped onto a known family. Isolated, stable per-experience fallback
+	-- folder, so an unknown game can never read another game's configs.
 	return "gid_" .. tostring(uid)
 end
 
@@ -463,7 +603,7 @@ local ConfigDir = GameRoot .. "/configs"
 local SelectedFile = ConfigDir .. "/Selected.txt"
 
 -- One-time debug banner: shows collected metadata and the resolved family so
--- real values can be verified against the hardcoded GameList when extending
+-- real values can be verified against the remote game list when extending
 -- support to a new game.
 if type(print) == "function" then
 	print("=== HYPERION GAME METADATA ===")
@@ -474,25 +614,33 @@ if type(print) == "function" then
 	print("  CreatorName: " .. tostring(GameMeta.CreatorName))
 	print("  CreatorId:   " .. tostring(GameMeta.CreatorId))
 	print("  CreatorType: " .. tostring(GameMeta.CreatorType))
-	print("  GameList:    " .. tostring(#GameList) .. " verified entries")
+	print("  GameList:    " .. tostring(RemoteGameList and #RemoteGameList or 0)
+		.. " entries (" .. tostring(GameListSource) .. ")")
 	local matched = GameMeta.UniverseId and GAMELIST_BY_UNIVERSE[GameMeta.UniverseId]
 	print("  GamelistMatch: " .. (matched
-		and (tostring(matched.GameName) .. " [" .. tostring(matched.UniverseId) .. "]")
+		and (tostring(matched.GameName) .. " [" .. tostring(matched.UniverseId) .. "])")
 		or "none (unknown game)"))
 end
 
 -- Legacy migration (idempotent, one-time copy). The previous system used
 -- short slugs ("bb", "fisch", "selllemons") under Hyperion/ directly, or
 -- stored configs under HyperionUI/. Copy any matching legacy data into
--- Hyperion/<family>/configs/ without overwriting newer files.
-local LEGACY_SLUG_TO_FAMILY = {
-	bb         = "BladeBall",
-	fisch      = "Fisch",
-	selllemons = "SellLemons",
-	["evade"]  = "evade",
-	["mm2"]    = "mm2",
-}
+-- Hyperion/<family>/configs/ without overwriting newer files. Legacy slug ->
+-- family pairs are derived from the remote game list (Folder + LegacyFolders),
+-- never hardcoded here.
 local LEGACY_ROOTS = { "Hyperion", "HyperionUI" }
+local function legacyFold(text)
+	return tostring(text or ""):lower():gsub("[^%w]+", "")
+end
+local LEGACY_FOLDER_TO_FAMILY = {}
+for _, e in ipairs(RemoteGameList or {}) do
+	if e.Folder then
+		LEGACY_FOLDER_TO_FAMILY[legacyFold(e.Folder)] = e.Folder
+		for _, lf in ipairs(e.LegacyFolders or {}) do
+			LEGACY_FOLDER_TO_FAMILY[legacyFold(lf)] = e.Folder
+		end
+	end
+end
 local function HasAny(path)
 	if type(isfolder) == "function" then
 		local ok, v = pcall(isfolder, path)
@@ -523,27 +671,16 @@ local function CopyFile(src, dst)
 end
 local function resolveFamilyFromFolderName(leaf)
 	if not leaf or leaf == "" then return nil end
-	-- Explicit slug overrides (things like "bb" that don't match by name).
-	local explicit = LEGACY_SLUG_TO_FAMILY[leaf:lower()]
-	if explicit then return explicit end
 	-- Skip auto-generated gid_<num> folders from the previous resolver.
 	if leaf:match("^gid_") then return nil end
-	-- Otherwise reuse the name-based family matcher (exact first, then
-	-- longest keyword containment, same rule as verified classification).
-	local folded = FoldName(leaf)
-	local stripped = folded:gsub("%s+", "")
-	local hit = GAME_FAMILY_BY_NAME[folded] or GAME_FAMILY_BY_NAME[stripped]
-	if hit then return hit end
-	local best, bestLen = nil, 0
-	for keyword, family in pairs(GAME_FAMILY_BY_NAME) do
-		if #keyword >= 3 and #keyword > bestLen and folded:find(keyword, 1, true) then
-			best, bestLen = family, #keyword
-		end
-	end
-	return best
+	-- Match the folder label against the remote-list lookup table built from
+	-- each entry's Folder + LegacyFolders (case/space-insensitive). Unknown
+	-- leaves are left untouched; nothing is guessed.
+	return LEGACY_FOLDER_TO_FAMILY[legacyFold(leaf)]
 end
 local function MigrateLegacy()
 	if type(listfiles) ~= "function" then return end
+	if not next(LEGACY_FOLDER_TO_FAMILY) then return end
 	for _, root in ipairs(LEGACY_ROOTS) do
 		local ok, entries = pcall(listfiles, root)
 		if ok and type(entries) == "table" then
@@ -634,6 +771,35 @@ function Library:Hide()
 end
 function Library:Destroy()
 	if activeWindow then return activeWindow:Destroy() end
+end
+-- Full UI-layer unload: destroy the active window, then sweep any stray
+-- HyperionUI roots so a re-executed source can never race an old instance
+-- over the same config state. Never touches non-UI scripts.
+function Library:Unload()
+	local w = activeWindow
+	activeWindow = nil
+	if w then
+		pcall(function() w:Destroy() end)
+	end
+	pcall(function()
+		local targets = {}
+		pcall(function()
+			if gethui then targets[#targets + 1] = gethui() end
+		end)
+		targets[#targets + 1] = game:GetService("CoreGui")
+		targets[#targets + 1] = LocalPlayer:FindFirstChildWhichIsA("PlayerGui")
+		for _, p in ipairs(targets) do
+			local stray = p and p:FindFirstChild("HyperionUI")
+			if stray then pcall(function() stray:Destroy() end) end
+		end
+	end)
+	pcall(function()
+		local g = getgenv()
+		if type(g) == "table" then
+			g.HyperionUI = nil
+		end
+	end)
+	return true
 end
 function Library:Window() return activeWindow end
 function Library:CreateWindow(opts)
@@ -800,14 +966,21 @@ local function ColorPreview(parent, order, o)
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
 		Size = UDim2.fromOffset(34, 16),
-		BackgroundColor3 = value,
+		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
 		BorderSizePixel = 0,
 		Parent = row,
 	})
-	Corner(swatch, 4)
-	Stroke(swatch, Theme.GroupStroke, 0.1)
+	local swatchFill = New("Frame", {
+		Name = "ColorFill",
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3 = value,
+		BorderSizePixel = 0,
+		Parent = swatch,
+	})
+	Corner(swatchFill, 4)
+	Stroke(swatchFill, Theme.GroupStroke, 0.1)
 	local POPUP_W, POPUP_H = 216, 158
 	local SPECTRUM_H, BAR_H = 98, 12
 	local popup = New("Frame", {
@@ -924,7 +1097,7 @@ local function ColorPreview(parent, order, o)
 		Parent = popup,
 	})
 	local function refresh()
-		swatch.BackgroundColor3 = value
+		swatchFill.BackgroundColor3 = value
 		preview.BackgroundColor3 = value
 		satGrad.Color = ColorSequence.new(HueToColor(hsvH), HueToColor(hsvH))
 		specDot.Position = UDim2.new(hsvS, 0, 1 - hsvV, 0)
@@ -1049,6 +1222,7 @@ end
 	local modal = nil
 	local closeModal = nil
 	local dragConn
+	local hookPanelOpen = nil
 	do
 		local dragging = false
 		local dragStart, startPos
@@ -1165,6 +1339,7 @@ end
 	end)
 	local function setVisible(visible, instant)
 		uiVisible = visible
+		if hookPanelOpen then hookPanelOpen() end
 		if instant then
 			Main.Visible = visible
 			Main.GroupTransparency = visible and 0 or 1
@@ -1348,6 +1523,353 @@ end
 		end)
 		return toast
 	end
+	-- =====================================================================
+	-- On-screen overlays: Keybind List and Watermark. Both are independent
+	-- of Main visibility, fully draggable, event-driven (no per-frame work
+	-- beyond what they need), and cleaned up with the window: every
+	-- connection goes through Connect() and every loop exits on `destroyed`
+	-- or when its toggle turns off.
+	-- =====================================================================
+	local GREEN = Color3.fromRGB(88, 214, 120)
+	local kbEnabled = false
+	local wmEnabled = false
+	local kbToggleObj = nil
+	local wmToggleObj = nil
+	local keybindListInvalidate = nil
+	local function makeOverlayDraggable(obj)
+		local dragging = false
+		local startInput, startPos
+		obj.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				startInput = input.Position
+				startPos = obj.Position
+			end
+		end)
+		Connect(UserInputService.InputChanged, function(input)
+			if not dragging then return end
+			if input.UserInputType ~= Enum.UserInputType.MouseMovement
+			and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
+				or Vector2.new(1920, 1080)
+			local delta = input.Position - startInput
+			local x = math.clamp(startPos.X.Offset + delta.X, 4, math.max(4, vp.X - obj.AbsoluteSize.X - 4))
+			local y = math.clamp(startPos.Y.Offset + delta.Y, 4, math.max(4, vp.Y - obj.AbsoluteSize.Y - 4))
+			obj.Position = UDim2.fromOffset(x, y)
+		end)
+		Connect(UserInputService.InputEnded, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = false
+			end
+		end)
+	end
+	local kbFrame, kbScroller
+	local kbRows = {}
+	local kbDirty = false
+	local function rebuildKeybindList()
+		if not (kbEnabled and kbFrame and kbFrame.Parent and kbScroller) then return end
+		for _, r in ipairs(kbRows) do
+			if r and r.Parent then r:Destroy() end
+		end
+		table.clear(kbRows)
+		local count = 0
+		for _, m in ipairs(modules) do
+			local e = m.Entry
+			local card = m.GetCard and m:GetCard()
+			if e and e.Keybind and card and card.Parent then
+				count += 1
+				local on = m:IsEnabled()
+				local tint = on and GREEN or Theme.Text
+				local row = New("Frame", {
+					Name = "KB_" .. m.Name,
+					Size = UDim2.new(1, 0, 0, 20),
+					BackgroundTransparency = 1,
+					ZIndex = 52,
+					Parent = kbScroller,
+				})
+				local ic = MakeIcon(row, on and "check" or "x", 13, tint)
+				ic.AnchorPoint = Vector2.new(0, 0.5)
+				ic.Position = UDim2.new(0, 0, 0.5, 0)
+				ic.ZIndex = 52
+				New("TextLabel", {
+					Position = UDim2.new(0, 20, 0, 0),
+					Size = UDim2.new(1, -52, 1, 0),
+					BackgroundTransparency = 1,
+					Text = m.Name,
+					FontFace = FONT_SEMIBOLD,
+					TextSize = 13,
+					TextColor3 = tint,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					ZIndex = 52,
+					Parent = row,
+				})
+				New("TextLabel", {
+					AnchorPoint = Vector2.new(1, 0),
+					Position = UDim2.new(1, 0, 0, 0),
+					Size = UDim2.new(0, 30, 1, 0),
+					BackgroundTransparency = 1,
+					Text = e.Keybind.Name,
+					FontFace = FONT_SEMIBOLD,
+					TextSize = 12,
+					TextColor3 = Theme.TextDim,
+					TextXAlignment = Enum.TextXAlignment.Right,
+					ZIndex = 52,
+					Parent = row,
+				})
+				kbRows[#kbRows + 1] = row
+			end
+		end
+		kbFrame.Visible = count > 0
+	end
+	keybindListInvalidate = function()
+		if not kbEnabled or kbDirty then return end
+		kbDirty = true
+		task.defer(function()
+			kbDirty = false
+			if kbEnabled and not destroyed then
+				rebuildKeybindList()
+			end
+		end)
+	end
+	local function ensureKeybindPanel()
+		if kbFrame then return end
+		kbFrame = New("CanvasGroup", {
+			Name = "KeybindList",
+			Visible = false,
+			AnchorPoint = Vector2.new(0, 0),
+			Position = UDim2.fromOffset(16, 150),
+			Size = UDim2.fromOffset(180, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = Theme.Group,
+			BackgroundTransparency = Theme.CardTransparency,
+			BorderSizePixel = 0,
+			Active = true,
+			ZIndex = 50,
+			Parent = Gui,
+		})
+		Corner(kbFrame, 9)
+		Stroke(kbFrame, Theme.GroupStroke, 0.3)
+		New("UIListLayout", {
+			Padding = UDim.new(0, 4),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = kbFrame,
+		})
+		Pad(kbFrame, 8, 8, 10, 10)
+		local head = New("TextButton", {
+			Name = "Head",
+			LayoutOrder = 1,
+			Size = UDim2.new(1, 0, 0, 16),
+			BackgroundTransparency = 1,
+			Text = "",
+			AutoButtonColor = false,
+			ZIndex = 51,
+			Parent = kbFrame,
+		})
+		local hic = MakeIcon(head, "keyboard", 13, Theme.HeaderText)
+		hic.AnchorPoint = Vector2.new(0, 0.5)
+		hic.Position = UDim2.new(0, 0, 0.5, 0)
+		hic.ZIndex = 51
+		New("TextLabel", {
+			Position = UDim2.new(0, 20, 0, 0),
+			Size = UDim2.new(1, -20, 1, 0),
+			BackgroundTransparency = 1,
+			Text = "KEYBINDS",
+			Font = Enum.Font.GothamBold,
+			TextSize = 10,
+			TextColor3 = Theme.HeaderText,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 51,
+			Parent = head,
+		})
+		kbScroller = New("ScrollingFrame", {
+			Name = "List",
+			LayoutOrder = 2,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			ScrollBarThickness = 3,
+			ScrollBarImageColor3 = Color3.fromRGB(60, 60, 66),
+			CanvasSize = UDim2.new(0, 0, 0, 0),
+			ScrollingDirection = Enum.ScrollingDirection.Y,
+			BorderSizePixel = 0,
+			ZIndex = 51,
+			Parent = kbFrame,
+		})
+		New("UISizeConstraint", { MaxSize = Vector2.new(10000, 190), Parent = kbScroller })
+		New("UIListLayout", {
+			Padding = UDim.new(0, 3),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = kbScroller,
+		})
+		makeOverlayDraggable(head)
+	end
+	local function SetKeybindList(v)
+		v = v == true
+		if v == kbEnabled then return end
+		kbEnabled = v
+		if v then
+			ensureKeybindPanel()
+			rebuildKeybindList()
+		elseif kbFrame then
+			kbFrame.Visible = false
+		end
+		if kbToggleObj then kbToggleObj.Refresh(v) end
+	end
+	local wmFrame, wmFpsLabel, wmPingLabel, wmAvatar
+	local wmToken = 0
+	local function wmPingMs()
+		local ok, ms = pcall(function()
+			return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+		end)
+		if ok and type(ms) == "number" and ms == ms then
+			return math.floor(ms + 0.5)
+		end
+		local ok2, secs = pcall(function() return workspace:GetServerPing() end)
+		if ok2 and type(secs) == "number" and secs == secs then
+			return math.floor(secs * 1000 + 0.5)
+		end
+		return 0
+	end
+	local function ensureWatermark()
+		if wmFrame then return end
+		wmFrame = New("CanvasGroup", {
+			Name = "Watermark",
+			Visible = false,
+			AnchorPoint = Vector2.new(0, 0),
+			Position = UDim2.fromOffset(16, 16),
+			Size = UDim2.fromOffset(0, 30),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = Theme.Group,
+			BackgroundTransparency = 0.45,
+			BorderSizePixel = 0,
+			Active = true,
+			ZIndex = 50,
+			Parent = Gui,
+		})
+		Corner(wmFrame, 9)
+		Stroke(wmFrame, Theme.GroupStroke, 0.35)
+		New("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = wmFrame,
+		})
+		Pad(wmFrame, 0, 0, 10, 10)
+		wmAvatar = New("ImageLabel", {
+			Name = "Avatar",
+			LayoutOrder = 1,
+			Size = UDim2.fromOffset(16, 16),
+			BackgroundColor3 = Theme.Control,
+			ScaleType = Enum.ScaleType.Crop,
+			Image = "",
+			ZIndex = 51,
+			Parent = wmFrame,
+		})
+		Corner(wmAvatar, 8)
+		local function wmDivider(order)
+			return New("Frame", {
+				LayoutOrder = order,
+				Size = UDim2.new(0, 1, 0, 14),
+				BackgroundColor3 = Theme.Divider,
+				BorderSizePixel = 0,
+				ZIndex = 51,
+				Parent = wmFrame,
+			})
+		end
+		wmDivider(2)
+		New("TextLabel", {
+			Name = "GameName",
+			LayoutOrder = 3,
+			Size = UDim2.new(0, 0, 1, 0),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundTransparency = 1,
+			Text = PlaceName or "Hyperion",
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextSoft,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			ZIndex = 51,
+			Parent = wmFrame,
+		})
+		New("UISizeConstraint", { MaxSize = Vector2.new(220, math.huge), Parent = wmFrame:FindFirstChild("GameName") })
+		wmDivider(4)
+		wmFpsLabel = New("TextLabel", {
+			Name = "FpsLabel",
+			LayoutOrder = 5,
+			Size = UDim2.new(0, 0, 1, 0),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundTransparency = 1,
+			Text = "0FPS",
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextSoft,
+			ZIndex = 51,
+			Parent = wmFrame,
+		})
+		wmDivider(6)
+		wmPingLabel = New("TextLabel", {
+			Name = "PingLabel",
+			LayoutOrder = 7,
+			Size = UDim2.new(0, 0, 1, 0),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundTransparency = 1,
+			Text = "0MS",
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextSoft,
+			ZIndex = 51,
+			Parent = wmFrame,
+		})
+		makeOverlayDraggable(wmFrame)
+		task.spawn(function()
+			local ok, url = pcall(function()
+				return Players:GetUserThumbnailAsync(
+					LocalPlayer.UserId,
+					Enum.ThumbnailType.HeadShot,
+					Enum.ThumbnailSize.Size420x420
+				)
+			end)
+			if ok and type(url) == "string" and url ~= "" and wmAvatar and wmAvatar.Parent then
+				wmAvatar.Image = url
+			end
+		end)
+	end
+	local function SetWatermark(v)
+		v = v == true
+		if v == wmEnabled then return end
+		wmEnabled = v
+		if v then
+			ensureWatermark()
+			wmFrame.Visible = true
+			wmToken += 1
+			local my = wmToken
+			task.spawn(function()
+				while wmEnabled and not destroyed and my == wmToken do
+					if wmFrame and wmFrame.Parent and wmFrame.Visible then
+						local ok, fps = pcall(function() return workspace:GetRealPhysicsFPS() end)
+						if ok and type(fps) == "number" and fps == fps then
+							wmFpsLabel.Text = math.floor(fps + 0.5) .. "FPS"
+						end
+						wmPingLabel.Text = wmPingMs() .. "MS"
+					end
+					task.wait(0.5)
+				end
+			end)
+		elseif wmFrame then
+			wmFrame.Visible = false
+		end
+		if wmToggleObj then wmToggleObj.Refresh(v) end
+	end
+	function Window:SetKeybindList(v) SetKeybindList(v == true) end
+	function Window:IsKeybindListVisible() return kbEnabled end
+	function Window:SetWatermark(v) SetWatermark(v == true) end
+	function Window:IsWatermarkVisible() return wmEnabled end
 	local function AttachKeybind(chip, entry, keyCode)
 		local function refresh()
 			chip.Text = KeybindText(entry.Keybind)
@@ -1362,6 +1884,7 @@ end
 			entry.Keybind = newKey
 			if entry.OnBind then entry.OnBind(newKey) end
 			refresh()
+			if keybindListInvalidate then keybindListInvalidate() end
 		end
 		function entry:BeginRebind()
 			chip.Text = "[...]"
@@ -2225,6 +2748,7 @@ end
 			manualOpen = false
 			applySwitch(fire ~= false)
 			refreshSettings()
+			if keybindListInvalidate then keybindListInvalidate() end
 		end
 		function entry:Get() return state end
 		function entry:Set(v, fire)
@@ -2719,6 +3243,7 @@ end
 		v = v == true
 		if v == panelOpen then return end
 		panelOpen = v
+		if hookPanelOpen then hookPanelOpen() end
 		if v then
 			panel.Visible = true
 			if syncPanelPosition then syncPanelPosition() end
@@ -2767,8 +3292,9 @@ end
 		BackgroundTransparency = 1,
 		ScrollBarThickness = 4,
 		ScrollBarImageColor3 = Color3.fromRGB(60, 60, 66),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		AutomaticCanvasSize = Enum.AutomaticSize.None,
 		CanvasSize = UDim2.new(0, 0, 0, 0),
+		ScrollingDirection = Enum.ScrollingDirection.Y,
 		BorderSizePixel = 0,
 		ZIndex = 21,
 		Parent = panel,
@@ -2779,6 +3305,24 @@ end
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = panelScroll,
 	})
+	-- Deterministic content height: AutomaticCanvasSize is skipped on
+	-- purpose so the bottom of the panel (Watermark / Keybind List rows)
+	-- is always reachable, even while dropdowns expand or the list grows.
+	local function syncPanelCanvas()
+		if not (panelScroll and panelScroll.Parent) then return end
+		local h = panelLayout.AbsoluteContentSize.Y + 24
+		if h > 0 then
+			panelScroll.CanvasSize = UDim2.new(0, 0, 0, h)
+		end
+	end
+	Connect(panelLayout:GetPropertyChangedSignal("AbsoluteContentSize"), syncPanelCanvas)
+	Connect(panelScroll:GetPropertyChangedSignal("AbsoluteCanvasSize"), function()
+		local need = panelLayout.AbsoluteContentSize.Y + 24
+		if panelScroll.AbsoluteCanvasSize.Y < need then
+			panelScroll.CanvasSize = UDim2.new(0, 0, 0, need)
+		end
+	end)
+	task.defer(syncPanelCanvas)
 	local function panelLabel(text, order)
 		return New("TextLabel", {
 			Name = "H_" .. text,
@@ -2808,13 +3352,21 @@ end
 	end)
 	do
 		local spin = 0
-		Connect(RunService.RenderStepped, function(dt)
-			if not gearBtn.Parent then return end
-			if panelOpen then
-				spin += dt * 45
-				gearIcon.Rotation = spin % 360
+		local spinConn = nil
+		local function setGearSpin()
+			local on = panelOpen and uiVisible
+			if on and not spinConn then
+				spinConn = Connect(RunService.RenderStepped, function(dt)
+					if not (panelOpen and uiVisible) then return end
+					spin += dt * 45
+					gearIcon.Rotation = spin % 360
+				end)
+			elseif not on and spinConn then
+				Release(spinConn)
+				spinConn = nil
 			end
-		end)
+		end
+		hookPanelOpen = setGearSpin
 	end
 	local CONFIG_DIR = ConfigDir
 	local CONFIG_DEFAULT = "Default"
@@ -2825,6 +3377,7 @@ end
 	local configWatchers = {}
 	local selectedConfig = CONFIG_DEFAULT
 	local notifyLocationDd, configDd, guiKeyEntry
+	local refreshConfigDropdown
 	local function configFile(name)
 		return CONFIG_DIR .. "/" .. name .. ".json"
 	end
@@ -2868,6 +3421,8 @@ end
 		return {
 			ToggleKey = toggleKey and toggleKey.Name or nil,
 			NotifyLocation = notifyLocation,
+			Watermark = wmEnabled,
+			KeybindList = kbEnabled,
 		}
 	end
 	local function buildConfigData()
@@ -2888,6 +3443,12 @@ end
 				Window:SetToggleKey(Enum.KeyCode[data.Gui.ToggleKey])
 				if guiKeyEntry then guiKeyEntry:Bind(Enum.KeyCode[data.Gui.ToggleKey]) end
 			end
+			if data.Gui.Watermark ~= nil then
+				SetWatermark(data.Gui.Watermark == true)
+			end
+			if data.Gui.KeybindList ~= nil then
+				SetKeybindList(data.Gui.KeybindList == true)
+			end
 		end
 		if type(data.Modules) == "table" then
 			for _, m in ipairs(modules) do
@@ -2904,9 +3465,13 @@ end
 		return ok
 	end
 	local function loadConfigFile(name)
-		if name == CONFIG_DEFAULT or not hasFs() then
+		if name == CONFIG_DEFAULT then
 			Window:Notify({ Title = "Configs", Text = "Loaded " .. name, Icon = "check" })
 			return true
+		end
+		if not hasFs() then
+			Window:Notify({ Title = "Configs", Text = "File access unavailable", Icon = "x" })
+			return false
 		end
 		local ok, raw = pcall(readfile, configFile(name))
 		if not ok or type(raw) ~= "string" or #raw == 0 then
@@ -2999,7 +3564,7 @@ end
 			end
 		end,
 	})
-	local function refreshConfigDropdown(selectName, skipPersist)
+	refreshConfigDropdown = function(selectName, skipPersist)
 		refreshConfigCache()
 		local names = configNames()
 		configDd:SetOptions(names)
@@ -3149,7 +3714,7 @@ end
 		local saveBtn = New("TextButton", {
 			Name = "SaveButton",
 			Position = UDim2.new(0, 14, 1, -38),
-			Size = UDim2.new(1, -86, 0, 26),
+			Size = UDim2.fromOffset(130, 26),
 			BackgroundColor3 = Theme.Control,
 			Text = "  Save",
 			FontFace = FONT_SEMIBOLD,
@@ -3169,7 +3734,7 @@ end
 			Name = "CancelButton",
 			AnchorPoint = Vector2.new(1, 0),
 			Position = UDim2.new(1, -14, 1, -38),
-			Size = UDim2.fromOffset(58, 26),
+			Size = UDim2.fromOffset(66, 26),
 			BackgroundColor3 = Theme.Control,
 			Text = "  Cancel",
 			FontFace = FONT_SEMIBOLD,
@@ -3183,7 +3748,7 @@ end
 		Corner(cancelBtn, 7)
 		local cancelIcon = MakeIcon(cancelBtn, "x", 13, Theme.TextDim)
 		cancelIcon.AnchorPoint = Vector2.new(0, 0.5)
-		cancelIcon.Position = UDim2.new(0, 9, 0.5, 0)
+		cancelIcon.Position = UDim2.new(0, 8, 0.5, 0)
 		cancelIcon.ZIndex = 63
 		saveBtn.MouseEnter:Connect(function() Tween(saveBtn, TWEEN_FAST, { BackgroundColor3 = Theme.ControlHover }) end)
 		saveBtn.MouseLeave:Connect(function() Tween(saveBtn, TWEEN_FAST, { BackgroundColor3 = Theme.Control }) end)
@@ -3222,27 +3787,118 @@ end
 			pcall(function() box:CaptureFocus() end)
 		end)
 	end
+	-- Pick the config to fall back to after a delete: prefer a remaining
+	-- user config over Default; Default only when nothing else exists.
+	local function fallbackAfterDelete(deletedName)
+		refreshConfigCache()
+		local fallback = CONFIG_DEFAULT
+		for _, cand in ipairs(configNames()) do
+			if cand ~= CONFIG_DEFAULT and cand ~= deletedName then
+				fallback = cand
+				break
+			end
+		end
+		return fallback
+	end
+	local function deleteSelectedConfig()
+		local target = selectedConfig
+		if target == CONFIG_DEFAULT then
+			Window:Notify({ Title = "Configs", Text = "Default cannot be deleted", Icon = "x" })
+			return false
+		end
+		if deleteConfigFile(target) then
+			refreshConfigDropdown(fallbackAfterDelete(target))
+			Window:Notify({ Title = "Configs", Text = "Deleted " .. target, Icon = "check" })
+			return true
+		end
+		refreshConfigDropdown()
+		Window:Notify({ Title = "Configs", Text = "Could not delete " .. target, Icon = "x" })
+		return false
+	end
 	BuildButton(panelScroll, 9, {
 		Name = "Add New Config",
 		Callback = openNameModal,
 	})
 	BuildButton(panelScroll, 10, {
 		Name = "Delete Selected Config",
-		Callback = function()
-			if selectedConfig == CONFIG_DEFAULT then
-				Window:Notify({ Title = "Configs", Text = "Default cannot be deleted", Icon = "x" })
-				return
-			end
-			local gone = selectedConfig
-			if deleteConfigFile(gone) then
-				refreshConfigDropdown(CONFIG_DEFAULT)
-				Window:Notify({ Title = "Configs", Text = "Deleted " .. gone, Icon = "check" })
-			else
-				refreshConfigDropdown()
-				Window:Notify({ Title = "Configs", Text = "Could not delete " .. gone, Icon = "x" })
-			end
-		end,
+		Callback = deleteSelectedConfig,
 	})
+	-- Display overlays: Watermark + Keybind List.
+	panelLabel("Display", 11)
+	local function panelSwitch(labelText, order, initial, onChange)
+		local value = initial == true
+		local row = New("Frame", {
+			Name = "Switch_" .. labelText,
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, 26),
+			BackgroundTransparency = 1,
+			ZIndex = 22,
+			Parent = panelScroll,
+		})
+		local click = New("TextButton", {
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Text = "",
+			AutoButtonColor = false,
+			ZIndex = 23,
+			Parent = row,
+		})
+		New("TextLabel", {
+			Size = UDim2.new(1, -44, 1, 0),
+			BackgroundTransparency = 1,
+			Text = labelText,
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 14,
+			TextColor3 = Theme.Text,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 23,
+			Parent = click,
+		})
+		local pill = New("Frame", {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, 0, 0.5, 0),
+			Size = UDim2.fromOffset(30, 17),
+			BackgroundColor3 = value and Theme.PillOn or Theme.PillOff,
+			BorderSizePixel = 0,
+			ZIndex = 23,
+			Parent = click,
+		})
+		Corner(pill, 9)
+		local knob = New("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = value and UDim2.new(1, -8, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
+			Size = UDim2.fromOffset(12, 12),
+			BackgroundColor3 = value and Theme.KnobOn or Theme.KnobOff,
+			BorderSizePixel = 0,
+			Parent = pill,
+		})
+		Corner(knob, 6)
+		local function render()
+			Tween(pill, TWEEN_MED, { BackgroundColor3 = value and Theme.PillOn or Theme.PillOff })
+			Tween(knob, TWEEN_TOGGLE, {
+				Position = value and UDim2.new(1, -8, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
+				BackgroundColor3 = value and Theme.KnobOn or Theme.KnobOff,
+			})
+		end
+		click.MouseButton1Click:Connect(function()
+			value = not value
+			render()
+			if onChange then task.spawn(onChange, value) end
+		end)
+		return {
+			Refresh = function(v)
+				value = v == true
+				render()
+			end,
+		}
+	end
+	wmToggleObj = panelSwitch("Watermark", 12, wmEnabled, function(v)
+		SetWatermark(v)
+	end)
+	kbToggleObj = panelSwitch("Keybind List", 13, kbEnabled, function(v)
+		SetKeybindList(v)
+	end)
+	task.defer(syncPanelCanvas)
 	-- Boot-time UI sync only: must NOT persist, or it would overwrite the
 	-- remembered selection before the deferred auto-load reads it.
 	refreshConfigDropdown(nil, true)
@@ -3274,13 +3930,11 @@ end
 		local target = name or selectedConfig
 		if target == CONFIG_DEFAULT then return false end
 		local ok = deleteConfigFile(target)
-		-- Prefer a remaining config over Default; Default only if nothing left.
-		refreshConfigCache()
-		local fallback = CONFIG_DEFAULT
-		for _, cand in ipairs(configNames()) do
-			if cand ~= CONFIG_DEFAULT then fallback = cand break end
+		if ok then
+			refreshConfigDropdown(fallbackAfterDelete(target))
+		else
+			refreshConfigDropdown()
 		end
-		refreshConfigDropdown(fallback)
 		return ok
 	end
 	function Window:AddConfig(name)
@@ -3309,15 +3963,32 @@ end
 	function Window:Hide()
 		setVisible(false)
 	end
+	-- Unload: tears down the UI layer only — Gui, overlays, every registered
+	-- connection, and runtime loops. Gameplay systems owned by other scripts
+	-- are untouched. Idempotent and safe to call from the re-execution path.
 	function Window:Destroy()
+		if destroyed then return end
 		destroyed = true
+		kbEnabled = false
+		wmEnabled = false
+		hookPanelOpen = nil
+		keybindListInvalidate = nil
 		ReleaseConns()
 		if indicatorConn then
 			pcall(function() indicatorConn:Disconnect() end)
 			indicatorConn = nil
 		end
+		table.clear(keybinds)
+		table.clear(modules)
+		table.clear(tabs)
+		table.clear(smoothSliders)
 		pcall(function() Gui:Destroy() end)
+		local okg, g = pcall(getgenv)
+		if okg and type(g) == "table" and g.HyperionUI == Window then
+			g.HyperionUI = nil
+		end
 	end
+	Window.Unload = function(_) return Window:Destroy() end
 	-- Re-apply this game's remembered config. Deferred because modules are
 	-- registered after CreateWindow returns; silent so startup stays quiet.
 	function Window:LoadRememberedConfig(silent)
@@ -3369,4 +4040,12 @@ end
 	end
 	return Window
 end
+-- Global unload handle: getgenv().HyperionUnloadUI() tears the whole UI
+-- layer down so a fresh execution of this source starts clean.
+pcall(function()
+	local g = getgenv()
+	if type(g) == "table" then
+		g.HyperionUnloadUI = function() return Library:Unload() end
+	end
+end)
 return Library

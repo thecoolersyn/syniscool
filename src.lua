@@ -193,62 +193,11 @@ local function PreviousWindow()
 	end
 	return nil
 end
--- ===========================================================================
--- Game-scoped storage. Owned entirely by the UI source: the main game script
--- never has to say which game it is or where anything is stored.
---
---   Hyperion/<GameFamily>/assets/
---   Hyperion/<GameFamily>/configs/
---   Hyperion/<GameFamily>/configs/Selected.txt  (last chosen config, per family)
---
--- Game families are resolved at load time by matching the current
--- UniverseId (game.GameId) + CreatorName against the REMOTE game list
--- (see GAME_LIST_URL). The supported-game database is NOT hardcoded here;
--- the GitHub-hosted file is the single source of truth. The resolved
--- GameFamily folder name determines ALL asset and config paths.
--- ===========================================================================
-local HYPERION_ROOT = "Hyperion"
 
--- ===========================================================================
--- Remote game list (single source of truth for supported games).
---
--- newui.lua downloads the game list from GitHub at initialization, validates
--- it, and uses it to classify the current game. Each valid entry provides:
---   GameName      string   official game name (data only; never executed)
---   GameConfig    string?  short code (kept as a legacy folder alias only;
---                          the logical folder is NEVER the abbreviation)
---   UniverseId    number   primary identity (shared by every place of the
---                          same experience)
---   CreatorName   string   supporting verification identity
---   CreatorId     number?  optional extra verification
---   Folder        string?  optional explicit logical folder label
---   LegacyFolders string[] optional legacy folder names to migrate from
---
--- GAME_LIST_URL may also be overridden at runtime through
--- getgenv().HyperionGameListUrl without touching this source. An empty URL
--- means "remote fetching disabled".
---
--- Failure policy: if the remote list cannot be downloaded/parses invalidly,
--- the last known-good copy cached under Hyperion/game-list-cache.txt is
--- used; if that is missing too, no game is classified and every game gets an
--- isolated "gid_<universeId>" folder. A remote failure NEVER breaks the UI
--- and NEVER makes one game load another game's configs. Malformed individual
--- entries are skipped without invalidating the rest of the list. The
--- downloaded content is treated strictly as data — it is never loadstring'ed
--- or executed, and folder names are sanitized against path traversal.
--- ===========================================================================
+local HYPERION_ROOT = "Hyperion"
 local GAME_LIST_URL = "https://raw.githubusercontent.com/thecoolersyn/syniscool/refs/heads/main/gamelist.lua"
 local GAME_LIST_CACHE = HYPERION_ROOT .. "/game-list-cache.txt"
 
--- ===========================================================================
--- Naming rules (NOT the game database). Game identity — which games exist,
--- their UniverseIds and CreatorNames — lives ONLY in the remote game list.
--- This table only maps a known display name to its preferred logical folder
--- spelling (Blade Ball -> BladeBall, never the "BB" short code) and doubles
--- as the legacy-folder interpreter during migration. Unknown remote games
--- fall back to a stable slug derived from their own GameName, so adding a
--- game never requires touching this source.
--- ===========================================================================
 local GAME_FAMILY_BY_NAME = {
 	["blade ball"]        = "BladeBall",
 	["bladeball"]         = "BladeBall",
@@ -273,10 +222,6 @@ local function SlugName(text)
 	return s
 end
 
--- Logical folder for a remote entry's GameName: exact/folded alias first,
--- then longest keyword containment (so "Blade Ball: Training Mode" and
--- "Blade Ball Ranked" share one family), then a stable slug. Never an
--- abbreviation such as "BB".
 local function FamilyForVerifiedName(gameName)
 	if not gameName then return nil end
 	local folded = FoldName(gameName)
@@ -323,8 +268,6 @@ local function HttpGetString(url)
 	return nil
 end
 
--- Sanitize a logical folder label coming from remote data: safe characters
--- only, no traversal, bounded length. Returns nil for unusable values.
 local function SafeFolderName(text)
 	local s = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
 	s = s:gsub("[^%w_%.]", "")
@@ -333,12 +276,6 @@ local function SafeFolderName(text)
 	return s
 end
 
--- Validate + normalize decoded remote rows into a clean entry list.
--- Duplicate UniverseIds keep the first occurrence; malformed entries are
--- skipped individually and never invalidate the rest of the list. The
--- logical Folder is taken from an explicit Folder field when present,
--- otherwise derived from GameName — the short GameConfig code ("BB") is
--- treated as a legacy alias only, never as the folder.
 local function NormalizeGameList(rows)
 	if type(rows) ~= "table" then return nil end
 	local src = rows
@@ -388,9 +325,6 @@ local function NormalizeGameList(rows)
 	return list
 end
 
--- Extract rows from the remote Lua-table payload WITHOUT executing it:
--- #121/#122 forbid running remote code, so only literal assignments inside
--- innermost { } blocks are pattern-matched as data.
 local function ParseLuaTableRows(body)
 	if type(body) ~= "string" or not body:find("UniverseId") then return nil end
 	local rows = {}
@@ -452,7 +386,7 @@ do
 		RemoteGameList = list
 		GameListSource = "remote"
 		pcall(makefolder, HYPERION_ROOT)
-		pcall(writefile, GAME_LIST_CACHE, body) -- refresh cache from remote success only
+		pcall(writefile, GAME_LIST_CACHE, body)
 	else
 		local okR, cached = pcall(readfile, GAME_LIST_CACHE)
 		local cachedList = okR and DecodeGameListBody(cached) or nil
@@ -463,8 +397,6 @@ do
 	end
 end
 
--- UniverseId -> verified entry. All places of one experience share the id,
--- so any sub-place of a supported game resolves to the same family.
 local GAMELIST_BY_UNIVERSE = {}
 for _, e in ipairs(RemoteGameList or {}) do
 	if not GAMELIST_BY_UNIVERSE[e.UniverseId] then
@@ -472,7 +404,6 @@ for _, e in ipairs(RemoteGameList or {}) do
 	end
 end
 
--- Creator names such as "Wiggity." vs "Wiggity" must compare equal.
 local function NormalizeCreator(text)
 	local s = tostring(text or ""):lower():gsub("[^%w%s]", "")
 	s = s:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
@@ -482,8 +413,6 @@ end
 local function CurrentPlaceName()
 	local ok, name = pcall(function() return game.PlaceName end)
 	if ok and type(name) == "string" and name ~= "" then return name end
-	-- Some executors hand back a stub DataModel with no PlaceName; the
-	-- marketplace lookup is the reliable fallback there.
 	local ok2, info = pcall(function()
 		return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId, Enum.InfoType.Asset)
 	end)
@@ -494,10 +423,6 @@ local function CurrentPlaceName()
 	return nil
 end
 
--- Collected metadata for the current Roblox environment. Values come from
--- the DataModel + MarketplaceService; never guessed. getgenv()
--- .HyperionGameMetadataOverride can force values through this exact path for
--- validation/debugging; it is inert when unset.
 local function CollectMetadata()
 	local okPid, pid = pcall(function() return game.PlaceId end)
 	local okGid, gid = pcall(function() return game.GameId end)
@@ -528,7 +453,7 @@ local function CollectMetadata()
 		CreatorId   = creatorId,
 		CreatorType = creatorType,
 	}
-	meta.GameId = meta.UniverseId -- compatibility alias; same value.
+	meta.GameId = meta.UniverseId
 
 	local override
 	pcall(function()
@@ -554,22 +479,14 @@ local function CollectMetadata()
 	return meta
 end
 
--- The one authoritative game-family resolver.
--- Returns the logical family folder name for the given metadata. The folder
--- label itself always comes from the remote game-list entry (never derived
--- from UniverseId/PlaceId for a verified game).
 local function resolveGameId(meta)
 	local uid = tonumber(meta and meta.UniverseId)
 	if not uid or uid == 0 then
-		-- UniverseId unavailable: cannot identify the game; neutral folder.
 		return "default"
 	end
 
 	local entry = GAMELIST_BY_UNIVERSE[uid]
 	if entry and entry.Folder then
-		-- UniverseId is the primary identity. Verify the creator identity when
-		-- both sides carry it; a contradiction means the entry data is stale or
-		-- spoofed, so refuse to classify instead of guessing.
 		local verified = true
 		local liveName = meta.CreatorName
 		local liveId   = meta.CreatorId
@@ -588,9 +505,6 @@ local function resolveGameId(meta)
 		end
 	end
 
-	-- Not in the verified list (or the remote list is unavailable): never
-	-- mapped onto a known family. Isolated, stable per-experience fallback
-	-- folder, so an unknown game can never read another game's configs.
 	return "gid_" .. tostring(uid)
 end
 
@@ -602,11 +516,8 @@ local AssetDir  = GameRoot .. "/assets"
 local ConfigDir = GameRoot .. "/configs"
 local SelectedFile = ConfigDir .. "/Selected.txt"
 
--- One-time debug banner: shows collected metadata and the resolved family so
--- real values can be verified against the remote game list when extending
--- support to a new game.
 if type(print) == "function" then
-	print("=== HYPERION GAME METADATA ===")
+	print("Game Metadata")
 	print("  Family:      " .. tostring(GameId))
 	print("  Game Name:   " .. tostring(PlaceName))
 	print("  PlaceId:     " .. tostring(GameMeta.PlaceId))
@@ -622,12 +533,6 @@ if type(print) == "function" then
 		or "none (unknown game)"))
 end
 
--- Legacy migration (idempotent, one-time copy). The previous system used
--- short slugs ("bb", "fisch", "selllemons") under Hyperion/ directly, or
--- stored configs under HyperionUI/. Copy any matching legacy data into
--- Hyperion/<family>/configs/ without overwriting newer files. Legacy slug ->
--- family pairs are derived from the remote game list (Folder + LegacyFolders),
--- never hardcoded here.
 local LEGACY_ROOTS = { "Hyperion", "HyperionUI" }
 local function legacyFold(text)
 	return tostring(text or ""):lower():gsub("[^%w]+", "")
@@ -660,7 +565,7 @@ local function DirIsEmpty(path)
 end
 local function CopyFile(src, dst)
 	if type(readfile) ~= "function" or type(writefile) ~= "function" then return false end
-	if isfile(dst) then return false end -- never overwrite newer data
+	if isfile(dst) then return false end
 	local ok, raw = pcall(readfile, src)
 	if not ok or type(raw) ~= "string" then return false end
 	local dir = dst:match("^(.*)/[^/]+$")
@@ -671,11 +576,7 @@ local function CopyFile(src, dst)
 end
 local function resolveFamilyFromFolderName(leaf)
 	if not leaf or leaf == "" then return nil end
-	-- Skip auto-generated gid_<num> folders from the previous resolver.
 	if leaf:match("^gid_") then return nil end
-	-- Match the folder label against the remote-list lookup table built from
-	-- each entry's Folder + LegacyFolders (case/space-insensitive). Unknown
-	-- leaves are left untouched; nothing is guessed.
 	return LEGACY_FOLDER_TO_FAMILY[legacyFold(leaf)]
 end
 local function MigrateLegacy()
@@ -772,9 +673,6 @@ end
 function Library:Destroy()
 	if activeWindow then return activeWindow:Destroy() end
 end
--- Full UI-layer unload: destroy the active window, then sweep any stray
--- HyperionUI roots so a re-executed source can never race an old instance
--- over the same config state. Never touches non-UI scripts.
 function Library:Unload()
 	local w = activeWindow
 	activeWindow = nil
@@ -1523,13 +1421,6 @@ end
 		end)
 		return toast
 	end
-	-- =====================================================================
-	-- On-screen overlays: Keybind List and Watermark. Both are independent
-	-- of Main visibility, fully draggable, event-driven (no per-frame work
-	-- beyond what they need), and cleaned up with the window: every
-	-- connection goes through Connect() and every loop exits on `destroyed`
-	-- or when its toggle turns off.
-	-- =====================================================================
 	local GREEN = Color3.fromRGB(88, 214, 120)
 	local kbEnabled = false
 	local wmEnabled = false
@@ -3305,9 +3196,6 @@ end
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = panelScroll,
 	})
-	-- Deterministic content height: AutomaticCanvasSize is skipped on
-	-- purpose so the bottom of the panel (Watermark / Keybind List rows)
-	-- is always reachable, even while dropdowns expand or the list grows.
 	local function syncPanelCanvas()
 		if not (panelScroll and panelScroll.Parent) then return end
 		local h = panelLayout.AbsoluteContentSize.Y + 24
@@ -3370,8 +3258,6 @@ end
 	end
 	local CONFIG_DIR = ConfigDir
 	local CONFIG_DEFAULT = "Default"
-	-- Filenames owned by the main script's own store that shares this folder.
-	-- They must never appear as UI-selectable configs nor become the fallback.
 	local CONFIG_RESERVED = { HyperionMain = true, Autosave = true }
 	local configCache = {}
 	local configWatchers = {}
@@ -3787,8 +3673,6 @@ end
 			pcall(function() box:CaptureFocus() end)
 		end)
 	end
-	-- Pick the config to fall back to after a delete: prefer a remaining
-	-- user config over Default; Default only when nothing else exists.
 	local function fallbackAfterDelete(deletedName)
 		refreshConfigCache()
 		local fallback = CONFIG_DEFAULT
@@ -3823,7 +3707,6 @@ end
 		Name = "Delete Selected Config",
 		Callback = deleteSelectedConfig,
 	})
-	-- Display overlays: Watermark + Keybind List.
 	panelLabel("Display", 11)
 	local function panelSwitch(labelText, order, initial, onChange)
 		local value = initial == true
@@ -3899,8 +3782,6 @@ end
 		SetKeybindList(v)
 	end)
 	task.defer(syncPanelCanvas)
-	-- Boot-time UI sync only: must NOT persist, or it would overwrite the
-	-- remembered selection before the deferred auto-load reads it.
 	refreshConfigDropdown(nil, true)
 	function Window:OpenGlobalSettings() setPanel(true) end
 	function Window:CloseGlobalSettings() setPanel(false) end
@@ -3963,9 +3844,6 @@ end
 	function Window:Hide()
 		setVisible(false)
 	end
-	-- Unload: tears down the UI layer only — Gui, overlays, every registered
-	-- connection, and runtime loops. Gameplay systems owned by other scripts
-	-- are untouched. Idempotent and safe to call from the re-execution path.
 	function Window:Destroy()
 		if destroyed then return end
 		destroyed = true
@@ -3989,8 +3867,6 @@ end
 		end
 	end
 	Window.Unload = function(_) return Window:Destroy() end
-	-- Re-apply this game's remembered config. Deferred because modules are
-	-- registered after CreateWindow returns; silent so startup stays quiet.
 	function Window:LoadRememberedConfig(silent)
 		local wanted = ReadSelectedConfig()
 		if not wanted or wanted == CONFIG_DEFAULT then
@@ -3999,7 +3875,6 @@ end
 		end
 		refreshConfigCache()
 		if not configCache[wanted] then
-			-- Deleted or never existed: fall back and remember the valid choice.
 			refreshConfigDropdown(CONFIG_DEFAULT)
 			return Window:GetSelectedConfig()
 		end
@@ -4040,8 +3915,7 @@ end
 	end
 	return Window
 end
--- Global unload handle: getgenv().HyperionUnloadUI() tears the whole UI
--- layer down so a fresh execution of this source starts clean.
+
 pcall(function()
 	local g = getgenv()
 	if type(g) == "table" then

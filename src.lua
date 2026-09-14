@@ -380,7 +380,21 @@ do
 			url = g.HyperionGameListUrl
 		end
 	end)
-	local body = HttpGetString(url)
+	local body = nil
+	local fetched = false
+	task.spawn(function()
+		local r = HttpGetString(url)
+		if not fetched then
+			body = r
+		end
+		fetched = true
+	end)
+	local waited = 0
+	while not fetched and waited < 8 do
+		task.wait(0.25)
+		waited = waited + 0.25
+	end
+	fetched = true
 	local list = DecodeGameListBody(body)
 	if list then
 		RemoteGameList = list
@@ -529,8 +543,16 @@ if type(print) == "function" then
 		.. " entries (" .. tostring(GameListSource) .. ")")
 	local matched = GameMeta.UniverseId and GAMELIST_BY_UNIVERSE[GameMeta.UniverseId]
 	print("  GamelistMatch: " .. (matched
-		and (tostring(matched.GameName) .. " [" .. tostring(matched.UniverseId) .. "])")
+		and (tostring(matched.GameName) .. " [" .. tostring(matched.UniverseId) .. "]")
 		or "none (unknown game)"))
+end
+local GameListUsable = (GameListSource == "remote" or GameListSource == "cache") and RemoteGameList ~= nil
+local GameSupported = true
+do
+	local uid = tonumber(GameMeta and GameMeta.UniverseId)
+	if GameListUsable and uid and uid ~= 0 then
+		GameSupported = not tostring(GameId):match("^gid_")
+	end
 end
 
 local LEGACY_ROOTS = { "Hyperion", "HyperionUI" }
@@ -644,6 +666,67 @@ local function WriteSelectedConfig(name)
 	EnsureDir()
 	return pcall(writefile, SelectedFile, tostring(name))
 end
+local GLOBALS_FILE = HYPERION_ROOT .. "/Globals.json"
+local function packUDim2(pos)
+	if typeof(pos) ~= "UDim2" then return nil end
+	return { SX = pos.X.Scale, OX = pos.X.Offset, SY = pos.Y.Scale, OY = pos.Y.Offset }
+end
+local function unpackUDim2(t, fallback)
+	if type(t) ~= "table" then return fallback end
+	local sx, ox, sy, oy = tonumber(t.SX), tonumber(t.OX), tonumber(t.SY), tonumber(t.OY)
+	if not (sx and ox and sy and oy) then return fallback end
+	if sx < 0 or sx > 1 or sy < 0 or sy > 1 then return fallback end
+	if math.abs(ox) > 5000 or math.abs(oy) > 5000 then return fallback end
+	return UDim2.new(sx, ox, sy, oy)
+end
+local function defaultGlobals()
+	return {
+		Watermark = { Enabled = false, Position = nil },
+		KeybindList = { Enabled = false, Position = nil },
+		SessionInfo = { Enabled = false, Position = nil },
+		GUIKeybind = nil,
+		NotificationLocation = nil,
+	}
+end
+local function readGlobals()
+	local base = defaultGlobals()
+	if not CanWriteFiles() then return base, false end
+	local ok, raw = pcall(readfile, GLOBALS_FILE)
+	if not ok or type(raw) ~= "string" or #raw == 0 then return base, false end
+	local decoded
+	local dok = pcall(function() decoded = HttpService:JSONDecode(raw) end)
+	if not dok or type(decoded) ~= "table" then return base, false end
+	local function overlayState(key)
+		local st = { Enabled = false, Position = nil }
+		local src = decoded[key]
+		if type(src) == "table" then
+			st.Enabled = src.Enabled == true
+			st.Position = unpackUDim2(src.Position, nil)
+		end
+		return st
+	end
+	base.Watermark = overlayState("Watermark")
+	base.KeybindList = overlayState("KeybindList")
+	base.SessionInfo = overlayState("SessionInfo")
+	if type(decoded.GUIKeybind) == "string" and Enum.KeyCode[decoded.GUIKeybind] then
+		base.GUIKeybind = decoded.GUIKeybind
+	end
+	if type(decoded.NotificationLocation) == "string" then
+		local known = false
+		for _, loc in ipairs(NOTIFY_LOCATIONS) do
+			if loc == decoded.NotificationLocation then known = true break end
+		end
+		if known then base.NotificationLocation = decoded.NotificationLocation end
+	end
+	return base, true
+end
+local function writeGlobals(data)
+	if not CanWriteFiles() or type(data) ~= "table" then return false end
+	EnsureDir()
+	local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
+	if not ok or type(json) ~= "string" then return false end
+	return pcall(writefile, GLOBALS_FILE, json)
+end
 
 local Library = {}
 function Library:GetGameId() return GameId end
@@ -700,6 +783,201 @@ function Library:Unload()
 	return true
 end
 function Library:Window() return activeWindow end
+local UNSUPPORTED_URL = "https://raw.githubusercontent.com/thecoolersyn/syniscool/refs/heads/main/unsupported.lua"
+local function loadUnsupportedModule()
+	local src = nil
+	pcall(function()
+		local g = getgenv()
+		if type(g) == "table" and type(g.HyperionUnsupportedChunk) == "string" and g.HyperionUnsupportedChunk ~= "" then
+			src = g.HyperionUnsupportedChunk
+		end
+	end)
+	if not src then
+		src = HttpGetString(UNSUPPORTED_URL)
+	end
+	if type(src) ~= "string" or src == "" then return nil end
+	local fn = nil
+	pcall(function()
+		fn = (loadstring or load)(src)
+	end)
+	if type(fn) ~= "function" then return nil end
+	local ok, mod = pcall(fn)
+	if ok and type(mod) == "function" then return mod end
+	return nil
+end
+local function fallbackUnsupportedWindow(guiParent)
+	local Gui = New("ScreenGui", {
+		Name = "HyperionUI",
+		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
+		DisplayOrder = 999,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Parent = guiParent,
+	})
+	local W = {}
+	local destroyedF = false
+	local function destroyFallback()
+		if destroyedF then return end
+		destroyedF = true
+		pcall(function() Gui:Destroy() end)
+		local okg, g = pcall(getgenv)
+		if okg and type(g) == "table" and g.HyperionUI == W then
+			g.HyperionUI = nil
+		end
+	end
+	local function fbSetting()
+		local s = { Keybind = nil, Kind = "Setting", Row = nil, OnBind = nil }
+		function s:Get() return nil end
+		function s:Set() end
+		function s:Bind() end
+		function s:GetValue() return nil end
+		function s:SetValue() end
+		function s:SetSilent() end
+		function s:SetOptions() end
+		function s:OptionCount() return 0 end
+		function s:RefreshChip() end
+		function s:BeginRebind() end
+		function s:EndRebind() end
+		return s
+	end
+	local fbSection
+	local function fbModule(name)
+		local entry = { Keybind = nil, Kind = "ModuleToggle", Row = nil, OnBind = nil }
+		function entry:Get() return false end
+		function entry:Set() end
+		function entry:Bind() end
+		function entry:RefreshChip() end
+		function entry:BeginRebind() end
+		function entry:EndRebind() end
+		local M = { Name = name or "Module", Entry = entry }
+		function M:AddToggle() return fbSetting() end
+		function M:AddSlider() return fbSetting() end
+		function M:AddDropdown() return fbSetting() end
+		function M:AddColorPick() return fbSetting() end
+		function M:AddInput() return fbSetting() end
+		function M:AddButton() return fbSetting() end
+		function M:AddLabel() return fbSetting() end
+		function M:AddKeybind() return fbSetting() end
+		M.CreateToggle = M.AddToggle
+		M.CreateSlider = M.AddSlider
+		M.CreateDropdown = M.AddDropdown
+		M.CreateButton = M.AddButton
+		M.CreateLabel = M.AddLabel
+		M.CreateInput = M.AddInput
+		M.CreateKeybind = M.AddKeybind
+		M.CreateColorPick = M.AddColorPick
+		function M:Get() return false end
+		function M:Set() end
+		function M:Toggle() end
+		function M:Notify() return nil end
+		function M:NotificationsEnabled() return false end
+		function M:SetNotifications() end
+		function M:GetSettings() return {} end
+		function M:FindSetting() return nil end
+		function M:GetConfig() return {} end
+		function M:ApplyConfig() end
+		function M:IsExpanded() return false end
+		function M:IsManuallyOpen() return false end
+		function M:SetExpanded() end
+		function M:IsEnabled() return false end
+		function M:GetCard() return nil end
+		function M:GetHeight() return 0 end
+		function M:OnResize() end
+		M.AddSection = function(_, sname) return fbSection(sname) end
+		M.CreateSection = M.AddSection
+		M.AddGroupbox = function() return fbSetting() end
+		return M
+	end
+	fbSection = function(sname)
+		local S = { Name = sname or "Section", Module = nil }
+		function S:AddToggle() return fbSetting() end
+		function S:AddSlider() return fbSetting() end
+		function S:AddDropdown() return fbSetting() end
+		function S:AddButton() return fbSetting() end
+		function S:AddLabel() return fbSetting() end
+		function S:AddInput() return fbSetting() end
+		function S:AddColorPick() return fbSetting() end
+		function S:AddKeybind() return fbSetting() end
+		function S:AddGroupbox() return fbSetting() end
+		S.CreateToggle = S.AddToggle
+		S.CreateSlider = S.AddSlider
+		S.CreateDropdown = S.AddDropdown
+		S.CreateButton = S.AddButton
+		S.CreateLabel = S.AddLabel
+		S.CreateInput = S.AddInput
+		S.CreateColorPick = S.AddColorPick
+		S.CreateKeybind = S.AddKeybind
+		S.Module = fbModule(sname)
+		return S
+	end
+	local function fbTab(label)
+		local T = { Name = label or "Tab", Modules = {}, Page = nil, Scroller = nil, Button = nil, NameLabel = nil, IconRef = nil }
+		function T:AddModule(mOpts)
+			local mlabel = type(mOpts) == "table" and (mOpts.Name or mOpts.Title) or "Module"
+			return fbModule(mlabel)
+		end
+		function T:AddSection(sOpts)
+			local slabel = type(sOpts) == "table" and (sOpts.Name or sOpts.Title) or tostring(sOpts or "Section")
+			return fbSection(slabel)
+		end
+		function T:AddGroupbox(gOpts)
+			return T:AddSection(gOpts)
+		end
+		function T:Select() end
+		T.CreateSection = T.AddSection
+		T.CreateGroupbox = T.AddGroupbox
+		return T
+	end
+	W.NotifyLocations = NOTIFY_LOCATIONS
+	function W:GetNotifyLocation() return "Corner Right" end
+	function W:SetNotifyLocation() end
+	function W:Notify() return nil end
+	function W:SetKeybindList() end
+	function W:IsKeybindListVisible() return false end
+	function W:SetWatermark() end
+	function W:IsWatermarkVisible() return false end
+	function W:SetSessionInfo() end
+	function W:IsSessionInfoVisible() return false end
+	function W:AddTab(tabOpts)
+		local label = type(tabOpts) == "table" and (tabOpts.Name or tabOpts.Title) or "Tab"
+		return fbTab(label)
+	end
+	function W:Modules() return {} end
+	function W:FindModule() return nil end
+	function W:SetToggleKey(key)
+		if typeof(key) == "EnumItem" then return key end
+		return Enum.KeyCode.LeftControl
+	end
+	function W:GetToggleKey() return Enum.KeyCode.LeftControl end
+	function W:WatchConfigDropdown(dd) return dd end
+	function W:RefreshConfigs() end
+	function W:OpenGlobalSettings() end
+	function W:CloseGlobalSettings() end
+	function W:IsGlobalSettingsOpen() return false end
+	function W:GetSelectedConfig() return "Default" end
+	function W:SetSelectedConfig() return "Default" end
+	function W:SaveConfig() return false end
+	function W:LoadConfig() return false end
+	function W:DeleteConfig() return false end
+	function W:AddConfig() return nil end
+	function W:ConfigNames() return { "Default" } end
+	function W:GetModuleStates() return { Version = 1, Gui = {}, Modules = {} } end
+	function W:ApplyModuleStates() end
+	W.GearButton = nil
+	W.SettingsPanel = nil
+	function W:Toggle() end
+	function W:Show() end
+	function W:Hide() end
+	function W:Destroy() destroyFallback() end
+	W.Unload = function(_) destroyFallback() end
+	function W:LoadRememberedConfig() return "Default" end
+	activeWindow = W
+	local okg, g = pcall(getgenv)
+	if okg and type(g) == "table" then
+		g.HyperionUI = W
+	end
+	return W
+end
 function Library:CreateWindow(opts)
 	opts = opts or {}
 	local title = opts.Title or "Hyperion"
@@ -751,6 +1029,31 @@ function Library:CreateWindow(opts)
 	end
 	local old = guiParent:FindFirstChild("HyperionUI")
 	if old then old:Destroy() end
+	if not GameSupported then
+		local showUnsupported = loadUnsupportedModule()
+		if showUnsupported then
+			local okShow, win = pcall(showUnsupported, {
+				guiParent = guiParent,
+				New = New,
+				Corner = Corner,
+				Stroke = Stroke,
+				Tween = Tween,
+				MakeIcon = MakeIcon,
+				TWEEN_MED = TWEEN_MED,
+				TWEEN_FAST = TWEEN_FAST,
+				Theme = Theme,
+				FONT_BOLD = FONT_BOLD,
+				FONT_SEMIBOLD = FONT_SEMIBOLD,
+				NOTIFY_LOCATIONS = NOTIFY_LOCATIONS,
+				PlaceName = PlaceName,
+				onWindow = function(w)
+					activeWindow = w
+				end,
+			})
+			if okShow and type(win) == "table" then return win end
+		end
+		return fallbackUnsupportedWindow(guiParent)
+	end
 	local Gui = New("ScreenGui", {
 		Name = "HyperionUI",
 		ResetOnSpawn = false,
@@ -1318,6 +1621,7 @@ end
 		NotifyHolder.Position = pos
 		NotifyLayout.HorizontalAlignment = alignH
 		NotifyLayout.VerticalAlignment = alignV
+		if saveGlobalsSoon then saveGlobalsSoon() end
 	end
 	Window.NotifyLocations = NOTIFY_LOCATIONS
 	function Window:GetNotifyLocation() return notifyLocation end
@@ -1422,20 +1726,48 @@ end
 		return toast
 	end
 	local GREEN = Color3.fromRGB(88, 214, 120)
+	local TextService = game:GetService("TextService")
 	local kbEnabled = false
 	local wmEnabled = false
 	local kbToggleObj = nil
 	local wmToggleObj = nil
 	local keybindListInvalidate = nil
-	local function makeOverlayDraggable(obj)
+	local siEnabled = false
+	local siToggleObj = nil
+	local sessionInfoInvalidate = nil
+	local sessionStart = os.clock()
+	local kbFrame = nil
+	local siFrame = nil
+	local wmDragged = false
+	local kbDragged = false
+	local siDragged = false
+	local kbTotalH = 0
+	local saveGlobalsSoon = nil
+	local savedWmPos, savedKbPos, savedSiPos = nil, nil, nil
+	local globalsReady = false
+	local function stackSession()
+		if not siFrame then return end
+		local kbTop = 56
+		if kbFrame and kbFrame.Parent and kbFrame.Visible then
+			local gh = Gui.AbsoluteSize.Y
+			if gh <= 0 then gh = 756 end
+			kbTop = kbFrame.Position.Y.Scale * gh + kbFrame.Position.Y.Offset
+		end
+		siFrame.AnchorPoint = Vector2.new(0, 0)
+		siFrame.Position = UDim2.new(0, 16, 0, kbTop + kbTotalH + 10)
+	end
+	local function makeOverlayDraggable(obj, vetoFn, onDrag)
 		local dragging = false
-		local startInput, startPos
+		local moved = false
+		local startInput, startOff
 		obj.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
+				if vetoFn and vetoFn(input) then return end
 				dragging = true
+				moved = false
 				startInput = input.Position
-				startPos = obj.Position
+				startOff = Vector2.new(obj.Position.X.Offset, obj.Position.Y.Offset)
 			end
 		end)
 		Connect(UserInputService.InputChanged, function(input)
@@ -1445,20 +1777,38 @@ end
 			local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
 				or Vector2.new(1920, 1080)
 			local delta = input.Position - startInput
-			local x = math.clamp(startPos.X.Offset + delta.X, 4, math.max(4, vp.X - obj.AbsoluteSize.X - 4))
-			local y = math.clamp(startPos.Y.Offset + delta.Y, 4, math.max(4, vp.Y - obj.AbsoluteSize.Y - 4))
-			obj.Position = UDim2.fromOffset(x, y)
+			if not moved then
+				moved = true
+				if onDrag then onDrag() end
+			end
+			local w = obj.AbsoluteSize.X
+			local h = obj.AbsoluteSize.Y
+			local ax = obj.AnchorPoint.X
+			local ay = obj.AnchorPoint.Y
+			local scx = obj.Position.X.Scale
+			local scy = obj.Position.Y.Scale
+			local shift = obj.AbsolutePosition - Vector2.new(
+				scx * vp.X + obj.Position.X.Offset - ax * w,
+				scy * vp.Y + obj.Position.Y.Offset - ay * h)
+			local tx = scx * vp.X + startOff.X + delta.X - ax * w + shift.X
+			local ty = scy * vp.Y + startOff.Y + delta.Y - ay * h + shift.Y
+			local cx = math.clamp(tx, 4 + shift.X, math.max(4 + shift.X, vp.X - w - 4 + shift.X))
+			local cy = math.clamp(ty, 4 + shift.Y, math.max(4 + shift.Y, vp.Y - h - 4 + shift.Y))
+			obj.Position = UDim2.new(scx, startOff.X + delta.X + (cx - tx), scy, startOff.Y + delta.Y + (cy - ty))
 		end)
 		Connect(UserInputService.InputEnded, function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 				dragging = false
+				if saveGlobalsSoon then saveGlobalsSoon() end
 			end
 		end)
 	end
-	local kbFrame, kbScroller
+	local kbScroller, kbListLayout
 	local kbRows = {}
 	local kbDirty = false
+	local kbSyncQueued = false
+	local syncKbSizes
 	local function rebuildKeybindList()
 		if not (kbEnabled and kbFrame and kbFrame.Parent and kbScroller) then return end
 		for _, r in ipairs(kbRows) do
@@ -1466,54 +1816,93 @@ end
 		end
 		table.clear(kbRows)
 		local count = 0
+		local widest = 0
+		local pending = {}
 		for _, m in ipairs(modules) do
 			local e = m.Entry
 			local card = m.GetCard and m:GetCard()
 			if e and e.Keybind and card and card.Parent then
-				count += 1
-				local on = m:IsEnabled()
-				local tint = on and GREEN or Theme.Text
-				local row = New("Frame", {
-					Name = "KB_" .. m.Name,
-					Size = UDim2.new(1, 0, 0, 20),
-					BackgroundTransparency = 1,
-					ZIndex = 52,
-					Parent = kbScroller,
-				})
-				local ic = MakeIcon(row, on and "check" or "x", 13, tint)
-				ic.AnchorPoint = Vector2.new(0, 0.5)
-				ic.Position = UDim2.new(0, 0, 0.5, 0)
-				ic.ZIndex = 52
-				New("TextLabel", {
-					Position = UDim2.new(0, 20, 0, 0),
-					Size = UDim2.new(1, -52, 1, 0),
-					BackgroundTransparency = 1,
-					Text = m.Name,
-					FontFace = FONT_SEMIBOLD,
-					TextSize = 13,
-					TextColor3 = tint,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextTruncate = Enum.TextTruncate.AtEnd,
-					ZIndex = 52,
-					Parent = row,
-				})
-				New("TextLabel", {
-					AnchorPoint = Vector2.new(1, 0),
-					Position = UDim2.new(1, 0, 0, 0),
-					Size = UDim2.new(0, 30, 1, 0),
-					BackgroundTransparency = 1,
-					Text = e.Keybind.Name,
-					FontFace = FONT_SEMIBOLD,
-					TextSize = 12,
-					TextColor3 = Theme.TextDim,
-					TextXAlignment = Enum.TextXAlignment.Right,
-					ZIndex = 52,
-					Parent = row,
-				})
-				kbRows[#kbRows + 1] = row
+				local keyName = e.Keybind.Name
+				local nameW = math.ceil(TextService:GetTextSize(m.Name, 13, Enum.Font.GothamSemibold, Vector2.new(4096, 20)).X)
+				local keyW = math.ceil(TextService:GetTextSize(keyName, 12, Enum.Font.GothamSemibold, Vector2.new(4096, 20)).X)
+				widest = math.max(widest, 13 + 7 + nameW + 8 + keyW)
+				pending[#pending + 1] = { m = m, on = m:IsEnabled(), keyName = keyName, keyW = keyW }
 			end
 		end
+		kbFrame.Size = UDim2.new(0, math.clamp(widest + 20, 150, 260), 0, 0)
+		for _, item in ipairs(pending) do
+			count += 1
+			local tint = item.on and GREEN or Theme.Text
+			local row = New("Frame", {
+				Name = "KB_" .. item.m.Name,
+				Size = UDim2.new(1, 0, 0, 20),
+				BackgroundTransparency = 1,
+				ZIndex = 52,
+				Parent = kbScroller,
+			})
+			local ic = MakeIcon(row, item.on and "check" or "x", 13, tint)
+			ic.AnchorPoint = Vector2.new(0, 0.5)
+			ic.Position = UDim2.new(0, 0, 0.5, 0)
+			ic.ZIndex = 52
+			New("TextLabel", {
+				Position = UDim2.new(0, 20, 0, 0),
+				Size = UDim2.new(1, -(28 + item.keyW), 1, 0),
+				BackgroundTransparency = 1,
+				Text = item.m.Name,
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 13,
+				TextColor3 = tint,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 52,
+				Parent = row,
+			})
+			New("TextLabel", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, 0, 0, 0),
+				Size = UDim2.new(0, item.keyW + 2, 1, 0),
+				BackgroundTransparency = 1,
+				Text = item.keyName,
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 12,
+				TextColor3 = Theme.TextDim,
+				TextXAlignment = Enum.TextXAlignment.Right,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 52,
+				Parent = row,
+			})
+			kbRows[#kbRows + 1] = row
+		end
+		syncKbSizes()
 		kbFrame.Visible = count > 0
+	end
+	syncKbSizes = function()
+		if not (kbEnabled and kbFrame and kbFrame.Parent and kbScroller and kbListLayout) then return end
+		local contentH = kbListLayout.AbsoluteContentSize.Y
+		if contentH <= 0 then
+			local n = #kbRows
+			if n > 0 then
+				contentH = n * 20 + (n - 1) * 3
+			end
+		end
+		kbScroller.Size = UDim2.new(1, 0, 0, math.min(contentH, 190))
+		kbScroller.CanvasSize = UDim2.new(0, 0, 0, contentH)
+		if contentH > 0 then
+			kbTotalH = 36 + math.min(contentH, 190)
+		end
+		if kbFrame.Visible and not siDragged and siFrame and siFrame.Parent and siFrame.Visible then
+			stackSession()
+		end
+	end
+	local function queueKbSync()
+		if kbSyncQueued then return end
+		kbSyncQueued = true
+		task.defer(function()
+			kbSyncQueued = false
+			if kbEnabled and not destroyed then
+				syncKbSizes()
+			end
+		end)
 	end
 	keybindListInvalidate = function()
 		if not kbEnabled or kbDirty then return end
@@ -1525,13 +1914,21 @@ end
 			end
 		end)
 	end
+	local function kbDragVeto(input)
+		if not (kbFrame and kbFrame.Visible and kbScroller) then return false end
+		if kbScroller.CanvasSize.Y.Offset <= kbScroller.AbsoluteSize.Y + 1 then return false end
+		local p = kbScroller.AbsolutePosition
+		local s = kbScroller.AbsoluteSize
+		local m = input.Position
+		return m.X >= p.X + s.X - 12 and m.X <= p.X + s.X and m.Y >= p.Y and m.Y <= p.Y + s.Y
+	end
 	local function ensureKeybindPanel()
 		if kbFrame then return end
 		kbFrame = New("CanvasGroup", {
 			Name = "KeybindList",
 			Visible = false,
 			AnchorPoint = Vector2.new(0, 0),
-			Position = UDim2.fromOffset(16, 150),
+			Position = savedKbPos or UDim2.fromOffset(16, 56),
 			Size = UDim2.fromOffset(180, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundColor3 = Theme.Group,
@@ -1579,8 +1976,6 @@ end
 			Name = "List",
 			LayoutOrder = 2,
 			Size = UDim2.new(1, 0, 0, 0),
-			AutomaticSize = Enum.AutomaticSize.Y,
-			AutomaticCanvasSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1,
 			ScrollBarThickness = 3,
 			ScrollBarImageColor3 = Color3.fromRGB(60, 60, 66),
@@ -1590,13 +1985,13 @@ end
 			ZIndex = 51,
 			Parent = kbFrame,
 		})
-		New("UISizeConstraint", { MaxSize = Vector2.new(10000, 190), Parent = kbScroller })
-		New("UIListLayout", {
+		kbListLayout = New("UIListLayout", {
 			Padding = UDim.new(0, 3),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			Parent = kbScroller,
 		})
-		makeOverlayDraggable(head)
+		Connect(kbListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), queueKbSync)
+		makeOverlayDraggable(kbFrame, kbDragVeto, function() kbDragged = true end)
 	end
 	local function SetKeybindList(v)
 		v = v == true
@@ -1604,11 +1999,16 @@ end
 		kbEnabled = v
 		if v then
 			ensureKeybindPanel()
+			if not kbDragged then
+				kbFrame.AnchorPoint = Vector2.new(0, 0)
+				kbFrame.Position = savedKbPos or UDim2.fromOffset(16, 56)
+			end
 			rebuildKeybindList()
 		elseif kbFrame then
 			kbFrame.Visible = false
 		end
 		if kbToggleObj then kbToggleObj.Refresh(v) end
+		if saveGlobalsSoon then saveGlobalsSoon() end
 	end
 	local wmFrame, wmFpsLabel, wmPingLabel, wmAvatar
 	local wmToken = 0
@@ -1631,7 +2031,7 @@ end
 			Name = "Watermark",
 			Visible = false,
 			AnchorPoint = Vector2.new(0, 0),
-			Position = UDim2.fromOffset(16, 16),
+			Position = savedWmPos or UDim2.fromOffset(16, 16),
 			Size = UDim2.fromOffset(0, 30),
 			AutomaticSize = Enum.AutomaticSize.X,
 			BackgroundColor3 = Theme.Group,
@@ -1717,7 +2117,7 @@ end
 			ZIndex = 51,
 			Parent = wmFrame,
 		})
-		makeOverlayDraggable(wmFrame)
+		makeOverlayDraggable(wmFrame, nil, function() wmDragged = true end)
 		task.spawn(function()
 			local ok, url = pcall(function()
 				return Players:GetUserThumbnailAsync(
@@ -1737,6 +2137,10 @@ end
 		wmEnabled = v
 		if v then
 			ensureWatermark()
+			if not wmDragged then
+				wmFrame.AnchorPoint = Vector2.new(0, 0)
+				wmFrame.Position = savedWmPos or UDim2.fromOffset(16, 16)
+			end
 			wmFrame.Visible = true
 			wmToken += 1
 			local my = wmToken
@@ -1756,11 +2160,179 @@ end
 			wmFrame.Visible = false
 		end
 		if wmToggleObj then wmToggleObj.Refresh(v) end
+		if saveGlobalsSoon then saveGlobalsSoon() end
 	end
 	function Window:SetKeybindList(v) SetKeybindList(v == true) end
 	function Window:IsKeybindListVisible() return kbEnabled end
 	function Window:SetWatermark(v) SetWatermark(v == true) end
 	function Window:IsWatermarkVisible() return wmEnabled end
+	local siPlayLabel, siPingLabel, siPlayersLabel, siModulesLabel
+	local siToken = 0
+	local function formatPlaytime(t)
+		if type(t) ~= "number" or t ~= t or t < 0 then t = 0 end
+		local h = math.floor(t / 3600)
+		local m = math.floor((t % 3600) / 60)
+		local s = math.floor(t % 60)
+		return string.format("%dh%02dm%02ds", h, m, s)
+	end
+	local function refreshSessionValues()
+		if not (siFrame and siFrame.Parent) then return end
+		if siPlayLabel then
+			siPlayLabel.Text = formatPlaytime(os.clock() - sessionStart)
+		end
+		if siPingLabel then
+			local ms = wmPingMs()
+			siPingLabel.Text = (type(ms) == "number" and ms > 0) and (ms .. "ms") or "N/A"
+		end
+		if siPlayersLabel then
+			local count = #Players:GetPlayers()
+			local max = Players.MaxPlayers
+			if type(max) == "number" and max > 0 then
+				siPlayersLabel.Text = count .. "/" .. max
+			else
+				siPlayersLabel.Text = tostring(count)
+			end
+		end
+		if siModulesLabel then
+			local on, total = 0, 0
+			for _, m in ipairs(modules) do
+				total += 1
+				if m:IsEnabled() then on += 1 end
+			end
+			siModulesLabel.Text = on .. "/" .. total
+		end
+	end
+	sessionInfoInvalidate = function()
+		if siEnabled and not destroyed then
+			refreshSessionValues()
+		end
+	end
+	local function siRow(order, name)
+		local row = New("Frame", {
+			Name = "SI_" .. name,
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, 20),
+			BackgroundTransparency = 1,
+			ZIndex = 52,
+			Parent = siFrame,
+		})
+		New("TextLabel", {
+			Position = UDim2.new(0, 0, 0, 0),
+			Size = UDim2.new(1, -70, 1, 0),
+			BackgroundTransparency = 1,
+			Text = name,
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextSoft,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			ZIndex = 52,
+			Parent = row,
+		})
+		local val = New("TextLabel", {
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 0, 0, 0),
+			Size = UDim2.new(0, 68, 1, 0),
+			BackgroundTransparency = 1,
+			Text = "",
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.Text,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			ZIndex = 52,
+			Parent = row,
+		})
+		return val
+	end
+	local function ensureSessionInfo()
+		if siFrame then return end
+		siFrame = New("CanvasGroup", {
+			Name = "SessionInfo",
+			Visible = false,
+			AnchorPoint = Vector2.new(0, 0),
+			Position = savedSiPos or UDim2.fromOffset(16, 120),
+			Size = UDim2.fromOffset(210, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundColor3 = Theme.Group,
+			BackgroundTransparency = 0.45,
+			BorderSizePixel = 0,
+			Active = true,
+			ZIndex = 50,
+			Parent = Gui,
+		})
+		Corner(siFrame, 9)
+		Stroke(siFrame, Theme.GroupStroke, 0.3)
+		New("UIListLayout", {
+			Padding = UDim.new(0, 4),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Parent = siFrame,
+		})
+		Pad(siFrame, 8, 8, 10, 10)
+		local head = New("TextButton", {
+			Name = "Head",
+			LayoutOrder = 1,
+			Size = UDim2.new(1, 0, 0, 16),
+			BackgroundTransparency = 1,
+			Text = "",
+			AutoButtonColor = false,
+			ZIndex = 51,
+			Parent = siFrame,
+		})
+		local hic = MakeIcon(head, "list", 13, Theme.HeaderText)
+		hic.AnchorPoint = Vector2.new(0, 0.5)
+		hic.Position = UDim2.new(0, 0, 0.5, 0)
+		hic.ZIndex = 51
+		New("TextLabel", {
+			Position = UDim2.new(0, 20, 0, 0),
+			Size = UDim2.new(1, -20, 1, 0),
+			BackgroundTransparency = 1,
+			Text = "SESSION INFO",
+			Font = Enum.Font.GothamBold,
+			TextSize = 10,
+			TextColor3 = Theme.HeaderText,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 51,
+			Parent = head,
+		})
+		siPlayLabel = siRow(2, "Session Playtime")
+		siPingLabel = siRow(3, "Server Response")
+		siPlayersLabel = siRow(4, "Player Count")
+		siModulesLabel = siRow(5, "Module Enabled")
+		makeOverlayDraggable(siFrame, nil, function() siDragged = true end)
+		Connect(Players.PlayerAdded, function() refreshSessionValues() end)
+		Connect(Players.PlayerRemoving, function() refreshSessionValues() end)
+		refreshSessionValues()
+	end
+	local function SetSessionInfo(v)
+		v = v == true
+		if v == siEnabled then return end
+		siEnabled = v
+		if v then
+			ensureSessionInfo()
+			if not siDragged then
+				stackSession()
+			end
+			siFrame.Visible = true
+			refreshSessionValues()
+			siToken += 1
+			local my = siToken
+			task.spawn(function()
+				while siEnabled and not destroyed and my == siToken do
+					if siFrame and siFrame.Parent and siFrame.Visible then
+						refreshSessionValues()
+					end
+					task.wait(0.5)
+				end
+			end)
+		elseif siFrame then
+			siFrame.Visible = false
+		end
+		if siToggleObj then siToggleObj.Refresh(v) end
+		if saveGlobalsSoon then saveGlobalsSoon() end
+	end
+	function Window:SetSessionInfo(v) SetSessionInfo(v == true) end
+	function Window:IsSessionInfoVisible() return siEnabled end
 	local function AttachKeybind(chip, entry, keyCode)
 		local function refresh()
 			chip.Text = KeybindText(entry.Keybind)
@@ -2640,6 +3212,7 @@ end
 			applySwitch(fire ~= false)
 			refreshSettings()
 			if keybindListInvalidate then keybindListInvalidate() end
+			if sessionInfoInvalidate then sessionInfoInvalidate() end
 		end
 		function entry:Get() return state end
 		function entry:Set(v, fire)
@@ -2989,6 +3562,8 @@ end
 				last = h
 			end)
 			table.insert(Tab.Modules, mod)
+			if keybindListInvalidate then keybindListInvalidate() end
+			if sessionInfoInvalidate then sessionInfoInvalidate() end
 			return mod
 		end
 		function Tab:Select()
@@ -3092,6 +3667,7 @@ end
 		elseif type(key) == "string" and Enum.KeyCode[key] then
 			toggleKey = Enum.KeyCode[key]
 		end
+		if saveGlobalsSoon then saveGlobalsSoon() end
 		return toggleKey
 	end
 	function Window:GetToggleKey() return toggleKey end
@@ -3304,12 +3880,7 @@ end
 		return names
 	end
 	local function guiSettings()
-		return {
-			ToggleKey = toggleKey and toggleKey.Name or nil,
-			NotifyLocation = notifyLocation,
-			Watermark = wmEnabled,
-			KeybindList = kbEnabled,
-		}
+		return {}
 	end
 	local function buildConfigData()
 		local data = { Version = 1, Gui = guiSettings(), Modules = {} }
@@ -3320,22 +3891,6 @@ end
 	end
 	local function applyConfigData(data)
 		if type(data) ~= "table" then return end
-		if type(data.Gui) == "table" then
-			if data.Gui.NotifyLocation then
-				SetNotifyLocation(data.Gui.NotifyLocation)
-				if notifyLocationDd then notifyLocationDd:SetSilent(data.Gui.NotifyLocation) end
-			end
-			if data.Gui.ToggleKey and Enum.KeyCode[data.Gui.ToggleKey] then
-				Window:SetToggleKey(Enum.KeyCode[data.Gui.ToggleKey])
-				if guiKeyEntry then guiKeyEntry:Bind(Enum.KeyCode[data.Gui.ToggleKey]) end
-			end
-			if data.Gui.Watermark ~= nil then
-				SetWatermark(data.Gui.Watermark == true)
-			end
-			if data.Gui.KeybindList ~= nil then
-				SetKeybindList(data.Gui.KeybindList == true)
-			end
-		end
 		if type(data.Modules) == "table" then
 			for _, m in ipairs(modules) do
 				local t = data.Modules[m.Name]
@@ -3775,12 +4330,200 @@ end
 			end,
 		}
 	end
+	local unloadModal1 = nil
+	local unloadModal2 = nil
+	local function closeUnloadModals()
+		if unloadModal1 and unloadModal1.Parent then unloadModal1:Destroy() end
+		unloadModal1 = nil
+		if unloadModal2 and unloadModal2.Parent then unloadModal2:Destroy() end
+		unloadModal2 = nil
+	end
+	local function unloadDialog(name, titleText, titleColor, bodyText, leftText, rightText, onLeft, onRight)
+		local overlay = New("Frame", {
+			Name = name,
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 200,
+			Parent = Gui,
+		})
+		local backdrop = New("TextButton", {
+			Name = "Backdrop",
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+			BackgroundTransparency = 1,
+			Text = "",
+			AutoButtonColor = false,
+			BorderSizePixel = 0,
+			ZIndex = 200,
+			Parent = overlay,
+		})
+		local dialog = New("CanvasGroup", {
+			Name = "Dialog",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(320, 160),
+			BackgroundColor3 = Theme.Group,
+			BackgroundTransparency = Theme.CardTransparency,
+			GroupTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 201,
+			Parent = overlay,
+		})
+		Corner(dialog, 11)
+		Stroke(dialog, Theme.GroupStroke, 0.1)
+		New("TextLabel", {
+			Position = UDim2.new(0, 16, 0, 14),
+			Size = UDim2.new(1, -32, 0, 40),
+			BackgroundTransparency = 1,
+			Text = titleText,
+			FontFace = FONT_BOLD,
+			TextSize = 14,
+			TextColor3 = titleColor,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+			ZIndex = 202,
+			Parent = dialog,
+		})
+		New("TextLabel", {
+			Position = UDim2.new(0, 16, 0, 58),
+			Size = UDim2.new(1, -32, 0, 50),
+			BackgroundTransparency = 1,
+			Text = bodyText,
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+			ZIndex = 202,
+			Parent = dialog,
+		})
+		local function mBtn(x, text, cb)
+			local b = New("TextButton", {
+				Name = text,
+				Position = UDim2.new(0, x, 1, -40),
+				Size = UDim2.new(0, 140, 0, 26),
+				BackgroundColor3 = Theme.Control,
+				Text = text,
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 13,
+				TextColor3 = Theme.TextSoft,
+				AutoButtonColor = false,
+				BorderSizePixel = 0,
+				ZIndex = 202,
+				Parent = dialog,
+			})
+			Corner(b, 7)
+			b.MouseEnter:Connect(function() Tween(b, TWEEN_FAST, { BackgroundColor3 = Theme.ControlHover }) end)
+			b.MouseLeave:Connect(function() Tween(b, TWEEN_FAST, { BackgroundColor3 = Theme.Control }) end)
+			b.MouseButton1Click:Connect(function()
+				if cb then task.spawn(cb) end
+			end)
+			return b
+		end
+		mBtn(16, leftText, onLeft)
+		mBtn(164, rightText, onRight)
+		Tween(backdrop, TWEEN_MED, { BackgroundTransparency = 0.5 })
+		Tween(dialog, TWEEN_MED, { GroupTransparency = 0 })
+		return overlay
+	end
+	local function showUnloadSecond()
+		if unloadModal2 then return end
+		unloadModal2 = unloadDialog(
+			"UnloadConfirm2",
+			"ARE YOU REALLY SURE TO UNLOAD THE SCRIPT?",
+			Color3.fromRGB(226, 120, 120),
+			"This will permanently remove the Hyperion UI, all overlays, and stop every UI connection for this session.",
+			"Yes",
+			"No",
+			function()
+				Library:Unload()
+			end,
+			function()
+				closeUnloadModals()
+			end)
+	end
+	local function showUnloadConfirm()
+		if unloadModal1 or unloadModal2 then return end
+		unloadModal1 = unloadDialog(
+			"UnloadConfirm1",
+			"Confirm Unload",
+			Theme.Text,
+			"Are you sure you want to unload the Hyperion UI?",
+			"Confirm",
+			"Cancel",
+			function()
+				if unloadModal1 and unloadModal1.Parent then unloadModal1:Destroy() end
+				unloadModal1 = nil
+				showUnloadSecond()
+			end,
+			function()
+				closeUnloadModals()
+			end)
+	end
 	wmToggleObj = panelSwitch("Watermark", 12, wmEnabled, function(v)
 		SetWatermark(v)
 	end)
 	kbToggleObj = panelSwitch("Keybind List", 13, kbEnabled, function(v)
 		SetKeybindList(v)
 	end)
+	siToggleObj = panelSwitch("Session Info", 14, siEnabled, function(v)
+		SetSessionInfo(v)
+	end)
+	BuildButton(panelScroll, 15, {
+		Name = "Unload",
+		Callback = function()
+			showUnloadConfirm()
+		end,
+	})
+	local globalsToken = 0
+	local lastGlobalsJson = nil
+	local function saveGlobalsNow()
+		if not CanWriteFiles() then return false end
+		local data = {
+			Watermark = { Enabled = wmEnabled, Position = packUDim2(wmFrame and wmFrame.Position or nil) },
+			KeybindList = { Enabled = kbEnabled, Position = packUDim2(kbFrame and kbFrame.Position or nil) },
+			SessionInfo = { Enabled = siEnabled, Position = packUDim2(siFrame and siFrame.Position or nil) },
+			GUIKeybind = toggleKey and toggleKey.Name or nil,
+			NotificationLocation = notifyLocation,
+		}
+		local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
+		if not ok or type(json) ~= "string" then return false end
+		if json == lastGlobalsJson then return true end
+		local wok = pcall(writefile, GLOBALS_FILE, json)
+		if wok then lastGlobalsJson = json end
+		return wok
+	end
+	saveGlobalsSoon = function()
+		if not globalsReady then return end
+		globalsToken += 1
+		local my = globalsToken
+		task.delay(0.5, function()
+			if destroyed or my ~= globalsToken then return end
+			saveGlobalsNow()
+		end)
+	end
+	do
+		local G, found = readGlobals()
+		savedWmPos = G.Watermark.Position
+		savedKbPos = G.KeybindList.Position
+		savedSiPos = G.SessionInfo.Position
+		if G.NotificationLocation then
+			SetNotifyLocation(G.NotificationLocation)
+			if notifyLocationDd then notifyLocationDd:SetSilent(G.NotificationLocation) end
+		end
+		if G.GUIKeybind and Enum.KeyCode[G.GUIKeybind] then
+			Window:SetToggleKey(Enum.KeyCode[G.GUIKeybind])
+			if guiKeyEntry then guiKeyEntry:Bind(Enum.KeyCode[G.GUIKeybind]) end
+		end
+		if G.Watermark.Enabled then SetWatermark(true) end
+		if G.KeybindList.Enabled then SetKeybindList(true) end
+		if G.SessionInfo.Enabled then SetSessionInfo(true) end
+		globalsReady = true
+		if not found then saveGlobalsNow() end
+	end
 	task.defer(syncPanelCanvas)
 	refreshConfigDropdown(nil, true)
 	function Window:OpenGlobalSettings() setPanel(true) end
@@ -3847,8 +4590,10 @@ end
 	function Window:Destroy()
 		if destroyed then return end
 		destroyed = true
+		saveGlobalsNow()
 		kbEnabled = false
 		wmEnabled = false
+		siEnabled = false
 		hookPanelOpen = nil
 		keybindListInvalidate = nil
 		ReleaseConns()

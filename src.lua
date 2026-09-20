@@ -686,6 +686,8 @@ local function defaultGlobals()
 		SessionInfo = { Enabled = false, Position = nil },
 		GUIKeybind = nil,
 		NotificationLocation = nil,
+		UIReopenMode = "Floating",
+		FloatingButton = { Position = nil },
 	}
 end
 local function readGlobals()
@@ -717,6 +719,26 @@ local function readGlobals()
 			if loc == decoded.NotificationLocation then known = true break end
 		end
 		if known then base.NotificationLocation = decoded.NotificationLocation end
+	end
+	if decoded.UIReopenMode == "Floating" or decoded.UIReopenMode == "Keybind" then
+		base.UIReopenMode = decoded.UIReopenMode
+	end
+	do
+		local fbPos = nil
+		local src = decoded.FloatingButton
+		if type(src) == "table" then
+			local posTbl = src.Position
+			if type(posTbl) == "table" then
+				fbPos = unpackUDim2(posTbl, nil)
+				if fbPos == nil then
+					local fx, fy = tonumber(posTbl.X), tonumber(posTbl.Y)
+					if fx and fy and fx >= 0 and fx <= 1 and fy >= 0 and fy <= 1 then
+						fbPos = UDim2.new(fx, 0, fy, 0)
+					end
+				end
+			end
+		end
+		base.FloatingButton = { Position = fbPos }
 	end
 	return base, true
 end
@@ -1115,15 +1137,37 @@ function Library:CreateWindow(opts)
 		Text = title,
 		Font = Enum.Font.GothamBold,
 		TextSize = 16,
-		TextColor3 = Theme.Text,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ClipsDescendants = false,
 		ZIndex = 7,
 		Parent = Header,
 	})
+	do
+		local grad = New("UIGradient", {
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 64, 64)),
+				ColorSequenceKeypoint.new(0.34, Color3.fromRGB(150, 150, 155)),
+				ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 0)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 64, 64)),
+			}),
+			Transparency = NumberSequence.new(0),
+			Rotation = 0,
+			Offset = Vector2.new(-1, 0),
+			Parent = titleLabel,
+		})
+		local gradT = 0
+		Connect(RunService.Heartbeat, function(dt)
+			if titleLabel.Parent == nil then return end
+			gradT = (gradT + dt * 0.4) % 2
+			grad.Offset = Vector2.new(gradT - 1, 0)
+		end)
+	end
 	if opts.Logo then
 		local logo = MakeIcon(Header, opts.Logo, 20, Theme.Text)
 		logo.AnchorPoint = Vector2.new(1, 0.5)
-		logo.Position = UDim2.new(1, -52, 0.5, 0)
+		logo.Position = UDim2.new(1, -84, 0.5, 0)
 		logo.ZIndex = 7
 	end
 	New("Frame", {
@@ -1522,6 +1566,15 @@ end
 	local SMOOTH_SPEED = 12
 	local notifyLocation = opts.NotifyLocation or "Corner Right"
 	local notifyDirection = 24
+	local uiReopenMode = "Floating"
+	local savedFloatingPos = nil
+	local floatingBtn = nil
+	local updateFloatingVisibility = nil
+	local ensureFloatingButton = nil
+	local destroyFloatingButton = nil
+	local setReopenMode = nil
+	local reopenModeDd = nil
+	local saveGlobalsSoon = nil
 	local heartbeatConn = Connect(RunService.Heartbeat, function(dt)
 		local step = math.min(1, dt * SMOOTH_SPEED)
 		for slider in pairs(smoothSliders) do
@@ -1552,9 +1605,11 @@ end
 				panelScale.Scale = visible and 1 or 0.96
 				if visible and panelOpen and syncPanelPosition then syncPanelPosition() end
 			end
+			if updateFloatingVisibility then updateFloatingVisibility() end
 			return
 		end
 		if visible then
+			if updateFloatingVisibility then updateFloatingVisibility() end
 			Main.Visible = true
 			Main.GroupTransparency = 1
 			Main.Position = UDim2.new(
@@ -1590,6 +1645,165 @@ end
 			task.delay(0.24, function()
 				if not uiVisible then Main.Visible = false end
 			end)
+			if updateFloatingVisibility then updateFloatingVisibility() end
+		end
+	end
+	do
+		local FB_SIZE = 48
+		local FB_THRESHOLD = 6
+		local fbDragging = false
+		local fbMoved = false
+		local fbPressMouse = nil
+		local fbPressOffset = nil
+		local fbPressScaleX, fbPressScaleY = 0, 0
+		local function floatingDefaultPos()
+			return UDim2.new(0.05, 0, 0.5, 0)
+		end
+		local function clampFloatingCenter(cx, cy)
+			local vp = Vector2.new(1920, 1080)
+			pcall(function()
+				local cam = workspace.CurrentCamera
+				if cam then vp = cam.ViewportSize end
+			end)
+			local half = FB_SIZE / 2 + 4
+			cx = math.clamp(cx, half, math.max(half, vp.X - half))
+			cy = math.clamp(cy, half, math.max(half, vp.Y - half))
+			return cx, cy, vp
+		end
+		ensureFloatingButton = function()
+			if destroyed then return nil end
+			if uiReopenMode ~= "Floating" then return nil end
+			if floatingBtn and floatingBtn.Parent == Gui then
+				return floatingBtn
+			end
+			if floatingBtn and floatingBtn.Parent then
+				pcall(function() floatingBtn:Destroy() end)
+			end
+			floatingBtn = nil
+			local btn = New("TextButton", {
+				Name = "FloatingReopen",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = savedFloatingPos or floatingDefaultPos(),
+				Size = UDim2.fromOffset(FB_SIZE, FB_SIZE),
+				BackgroundColor3 = Theme.Group,
+				BackgroundTransparency = 0.45,
+				Text = "",
+				AutoButtonColor = false,
+				Active = true,
+				Selectable = false,
+				BorderSizePixel = 0,
+				Visible = not uiVisible,
+				ZIndex = 100,
+				Parent = Gui,
+			})
+			New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = btn })
+			Stroke(btn, Theme.GroupStroke, 0.3)
+			local icon = MakeIcon(btn, "bomb", 22, Theme.Text)
+			icon.AnchorPoint = Vector2.new(0.5, 0.5)
+			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+			icon.ZIndex = 101
+			btn.InputBegan:Connect(function(input)
+				if destroyed then return end
+				if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+					fbDragging = true
+					fbMoved = false
+					fbPressMouse = input.Position
+					fbPressOffset = Vector2.new(btn.Position.X.Offset, btn.Position.Y.Offset)
+					fbPressScaleX, fbPressScaleY = btn.Position.X.Scale, btn.Position.Y.Scale
+				end
+			end)
+			Connect(UserInputService.InputChanged, function(input)
+				if not fbDragging then return end
+				if destroyed then fbDragging = false return end
+				if input.UserInputType ~= Enum.UserInputType.MouseMovement
+				and input.UserInputType ~= Enum.UserInputType.Touch then return end
+				if not fbPressMouse then return end
+				if not (floatingBtn == btn and btn.Parent) then return end
+				local delta = input.Position - fbPressMouse
+				if not fbMoved then
+					if delta.Magnitude <= FB_THRESHOLD then
+						return
+					end
+					fbMoved = true
+				end
+				local wantCx = fbPressScaleX * (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.X or 1920)
+					+ fbPressOffset.X + delta.X
+				local wantCy = fbPressScaleY * (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080)
+					+ fbPressOffset.Y + delta.Y
+				local ccx, ccy, vp = clampFloatingCenter(wantCx, wantCy)
+				local nx = ccx - fbPressScaleX * vp.X
+				local ny = ccy - fbPressScaleY * vp.Y
+				btn.Position = UDim2.new(fbPressScaleX, nx, fbPressScaleY, ny)
+			end)
+			Connect(UserInputService.InputEnded, function(input)
+				if not fbDragging then return end
+				if input.UserInputType ~= Enum.UserInputType.MouseButton1
+				and input.UserInputType ~= Enum.UserInputType.Touch then return end
+				fbDragging = false
+				if not (floatingBtn == btn and btn.Parent) then return end
+				if not fbMoved then
+					btn.Visible = false
+					setVisible(true)
+				else
+					savedFloatingPos = btn.Position
+					if saveGlobalsSoon then saveGlobalsSoon() end
+				end
+				fbMoved = false
+				fbPressMouse = nil
+			end)
+			floatingBtn = btn
+			return btn
+		end
+		destroyFloatingButton = function()
+			fbDragging = false
+			fbMoved = false
+			if floatingBtn then
+				local b = floatingBtn
+				floatingBtn = nil
+				pcall(function() b:Destroy() end)
+			end
+		end
+		updateFloatingVisibility = function()
+			if destroyed then return end
+			if uiReopenMode ~= "Floating" then
+				if floatingBtn and floatingBtn.Parent then
+					floatingBtn.Visible = false
+				end
+				return
+			end
+			if uiVisible then
+				if floatingBtn and floatingBtn.Parent then
+					floatingBtn.Visible = false
+				end
+			else
+				local b = ensureFloatingButton()
+				if b then
+					b.Visible = true
+				end
+			end
+		end
+		setReopenMode = function(mode, skipSave)
+			if mode ~= "Floating" and mode ~= "Keybind" then return uiReopenMode end
+			if mode == uiReopenMode then
+				if mode == "Floating" and not uiVisible then
+					updateFloatingVisibility()
+				end
+				return uiReopenMode
+			end
+			uiReopenMode = mode
+			if reopenModeDd and reopenModeDd.SetSilent then
+				pcall(function() reopenModeDd:SetSilent(mode) end)
+			end
+			if mode == "Keybind" then
+				destroyFloatingButton()
+			else
+				if not uiVisible then
+					updateFloatingVisibility()
+				end
+			end
+			if not skipSave and saveGlobalsSoon then saveGlobalsSoon() end
+			return uiReopenMode
 		end
 	end
 	local function SetNotifyLocation(name)
@@ -1742,7 +1956,7 @@ end
 	local kbDragged = false
 	local siDragged = false
 	local kbTotalH = 0
-	local saveGlobalsSoon = nil
+	saveGlobalsSoon = nil
 	local savedWmPos, savedKbPos, savedSiPos = nil, nil, nil
 	local globalsReady = false
 	local function stackSession()
@@ -3805,7 +4019,7 @@ end
 	local gearBtn = IconButton(Header, 28, 7)
 	gearBtn.Name = "SettingsGear"
 	gearBtn.AnchorPoint = Vector2.new(1, 0.5)
-	gearBtn.Position = UDim2.new(1, -14, 0.5, 0)
+	gearBtn.Position = UDim2.new(1, -48, 0.5, 0)
 	gearBtn.ZIndex = 7
 	local gearIcon = MakeIcon(gearBtn, "cog", 17, Theme.TextDim)
 	gearIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -3813,6 +4027,19 @@ end
 	gearIcon.ImageColor3 = Theme.TextDim
 	gearBtn.MouseButton1Click:Connect(function()
 		setPanel(not panelOpen)
+	end)
+	local minimizeBtn = IconButton(Header, 28, 7)
+	minimizeBtn.Name = "Minimize"
+	minimizeBtn.AnchorPoint = Vector2.new(1, 0.5)
+	minimizeBtn.Position = UDim2.new(1, -12, 0.5, 0)
+	minimizeBtn.ZIndex = 7
+	local minimizeIcon = MakeIcon(minimizeBtn, "x", 17, Theme.TextDim)
+	minimizeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	minimizeIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+	minimizeIcon.ImageColor3 = Theme.TextDim
+	minimizeBtn.MouseButton1Click:Connect(function()
+		if destroyed then return end
+		setVisible(false)
 	end)
 	do
 		local spin = 0
@@ -4472,7 +4699,16 @@ end
 	siToggleObj = panelSwitch("Session Info", 14, siEnabled, function(v)
 		SetSessionInfo(v)
 	end)
-	BuildButton(panelScroll, 15, {
+	panelLabel("UI Reopen Mode", 15)
+	reopenModeDd = BuildDropdown(panelScroll, 16, {
+		Name = "Mode",
+		Options = { "Floating", "Keybind" },
+		Default = uiReopenMode,
+		Callback = function(v)
+			if setReopenMode then setReopenMode(v) end
+		end,
+	})
+	BuildButton(panelScroll, 17, {
 		Name = "Unload",
 		Callback = function()
 			showUnloadConfirm()
@@ -4488,6 +4724,8 @@ end
 			SessionInfo = { Enabled = siEnabled, Position = packUDim2(siFrame and siFrame.Position or nil) },
 			GUIKeybind = toggleKey and toggleKey.Name or nil,
 			NotificationLocation = notifyLocation,
+			UIReopenMode = uiReopenMode,
+			FloatingButton = { Position = packUDim2((floatingBtn and floatingBtn.Parent and floatingBtn.Position or nil) or savedFloatingPos) },
 		}
 		local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
 		if not ok or type(json) ~= "string" then return false end
@@ -4510,10 +4748,17 @@ end
 		savedWmPos = G.Watermark.Position
 		savedKbPos = G.KeybindList.Position
 		savedSiPos = G.SessionInfo.Position
+		if G.FloatingButton and G.FloatingButton.Position then
+			savedFloatingPos = G.FloatingButton.Position
+		end
+		if G.UIReopenMode == "Floating" or G.UIReopenMode == "Keybind" then
+			uiReopenMode = G.UIReopenMode
+		end
 		if G.NotificationLocation then
 			SetNotifyLocation(G.NotificationLocation)
 			if notifyLocationDd then notifyLocationDd:SetSilent(G.NotificationLocation) end
 		end
+		if reopenModeDd then reopenModeDd:SetSilent(uiReopenMode) end
 		if G.GUIKeybind and Enum.KeyCode[G.GUIKeybind] then
 			Window:SetToggleKey(Enum.KeyCode[G.GUIKeybind])
 			if guiKeyEntry then guiKeyEntry:Bind(Enum.KeyCode[G.GUIKeybind]) end
@@ -4578,6 +4823,14 @@ end
 	function Window:ApplyModuleStates(data) applyConfigData(data) end
 	Window.GearButton = gearBtn
 	Window.SettingsPanel = panel
+	Window.MinimizeButton = minimizeBtn
+	function Window:GetReopenMode() return uiReopenMode end
+	function Window:SetReopenMode(mode)
+		if setReopenMode then return setReopenMode(mode) end
+		return uiReopenMode
+	end
+	function Window:GetFloatingButton() return floatingBtn end
+	function Window:Minimize() setVisible(false) end
 	function Window:Toggle()
 		setVisible(not uiVisible)
 	end
@@ -4587,6 +4840,7 @@ end
 	function Window:Hide()
 		setVisible(false)
 	end
+	function Window:IsVisible() return uiVisible end
 	function Window:Destroy()
 		if destroyed then return end
 		destroyed = true
@@ -4596,6 +4850,10 @@ end
 		siEnabled = false
 		hookPanelOpen = nil
 		keybindListInvalidate = nil
+		if destroyFloatingButton then destroyFloatingButton() end
+		updateFloatingVisibility = nil
+		ensureFloatingButton = nil
+		setReopenMode = nil
 		ReleaseConns()
 		if indicatorConn then
 			pcall(function() indicatorConn:Disconnect() end)

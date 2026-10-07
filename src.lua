@@ -2265,43 +2265,17 @@ end
 			Parent = parent,
 		})
 		New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, Parent = box })
-		local nameRow = New("Frame", {
-			Name = "NameRow",
-			LayoutOrder = 1,
-			Size = UDim2.new(1, 0, 0, 20),
-			BackgroundTransparency = 1,
-			Parent = box,
-		})
 		New("TextLabel", {
-			Size = UDim2.new(1, -52, 1, 0),
+			LayoutOrder = 1,
+			Size = UDim2.new(1, 0, 0, 14),
 			BackgroundTransparency = 1,
 			Text = o.Name,
 			FontFace = FONT_SEMIBOLD,
 			TextSize = 15,
 			TextColor3 = Theme.TextSoft,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-			Parent = nameRow,
+			Parent = box,
 		})
-		local chip = New("TextButton", {
-			Name = "Keybind",
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, 0, 0.5, 0),
-			Size = UDim2.new(0, 0, 0, 20),
-			AutomaticSize = Enum.AutomaticSize.X,
-			BackgroundTransparency = 1,
-			BackgroundColor3 = Theme.TextSoft,
-			Text = KeybindText(keyCode),
-			FontFace = FONT_SEMIBOLD,
-			TextSize = 13,
-			TextColor3 = Theme.TextDim,
-			AutoButtonColor = false,
-			BorderSizePixel = 0,
-			Parent = nameRow,
-		})
-		Corner(chip, 5)
-		Pad(chip, 0, 0, 5, 5)
 		local holder = New("Frame", {
 			LayoutOrder = 2,
 			Size = UDim2.new(1, 0, 0, HEADER_H),
@@ -2320,7 +2294,7 @@ end
 		})
 		local valueText = New("TextLabel", {
 			Position = UDim2.new(0, 10, 0, 0),
-			Size = UDim2.new(1, -36, 1, 0),
+			Size = UDim2.new(1, -84, 1, 0),
 			BackgroundTransparency = 1,
 			Text = tostring(value),
 			FontFace = FONT_SEMIBOLD,
@@ -2330,6 +2304,24 @@ end
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Parent = header,
 		})
+		local chip = New("TextButton", {
+			Name = "Keybind",
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -26, 0.5, 0),
+			Size = UDim2.new(0, 0, 0, 20),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundTransparency = 1,
+			BackgroundColor3 = Theme.TextSoft,
+			Text = KeybindText(keyCode),
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextDim,
+			AutoButtonColor = false,
+			BorderSizePixel = 0,
+			Parent = holder,
+		})
+		Corner(chip, 5)
+		Pad(chip, 0, 0, 5, 5)
 		local chev = MakeIcon(header, "chevrons-up-down", 14, Theme.TextDim)
 		chev.AnchorPoint = Vector2.new(1, 0.5)
 		chev.Position = UDim2.new(1, -8, 0.5, 0)
@@ -2463,7 +2455,7 @@ end
 		end
 		AttachKeybind(chip, keyEntry, keyCode)
 		self.KeyEntry = keyEntry
-		self.Row = nameRow
+		self.Row = holder
 		return self
 	end
 	local function BuildInput(parent, order, o)

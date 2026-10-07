@@ -939,7 +939,7 @@ end
 			local dx = targetX - displayX
 			local dy = targetY - displayY
 			if not dragging and math.abs(dx) < 0.5 and math.abs(dy) < 0.5 then
-				Main.Position = UDim2.new(dragScaleX, targetX, dragScaleY, targetY)
+				Main.Position = UDim2it st.new(dragScaleX, targetX, dragScaleY, targetY)
 				uiHomePos = Main.Position
 				displayX = nil
 				if syncPanelPosition then syncPanelPosition() end

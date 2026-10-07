@@ -2250,6 +2250,10 @@ end
 	local function BuildDropdown(parent, order, o)
 		local options = o.Options or {}
 		local value = o.Default or options[1]
+		local keyCode = nil
+		if o.Keybind and Enum.KeyCode[o.Keybind] then
+			keyCode = Enum.KeyCode[o.Keybind]
+		end
 		local HEADER_H = 26
 		local ROW_H = 23
 		local box = New("Frame", {
@@ -2261,17 +2265,43 @@ end
 			Parent = parent,
 		})
 		New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, Parent = box })
-		New("TextLabel", {
+		local nameRow = New("Frame", {
+			Name = "NameRow",
 			LayoutOrder = 1,
-			Size = UDim2.new(1, 0, 0, 14),
+			Size = UDim2.new(1, 0, 0, 20),
+			BackgroundTransparency = 1,
+			Parent = box,
+		})
+		New("TextLabel", {
+			Size = UDim2.new(1, -52, 1, 0),
 			BackgroundTransparency = 1,
 			Text = o.Name,
 			FontFace = FONT_SEMIBOLD,
 			TextSize = 15,
 			TextColor3 = Theme.TextSoft,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = box,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Parent = nameRow,
 		})
+		local chip = New("TextButton", {
+			Name = "Keybind",
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, 0, 0.5, 0),
+			Size = UDim2.new(0, 0, 0, 20),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundTransparency = 1,
+			BackgroundColor3 = Theme.TextSoft,
+			Text = KeybindText(keyCode),
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextDim,
+			AutoButtonColor = false,
+			BorderSizePixel = 0,
+			Parent = nameRow,
+		})
+		Corner(chip, 5)
+		Pad(chip, 0, 0, 5, 5)
 		local holder = New("Frame", {
 			LayoutOrder = 2,
 			Size = UDim2.new(1, 0, 0, HEADER_H),
@@ -2411,6 +2441,29 @@ end
 			buildRows()
 		end
 		self.OptionCount = function() return #options end
+		local keyEntry = { Kind = "DropdownKey" }
+		local function cycle(delta)
+			if #options == 0 then return end
+			local index = 1
+			for i, v in ipairs(options) do
+				if tostring(v) == value then
+					index = i
+					break
+				end
+			end
+			local target = ((index - 1 + delta) % #options) + 1
+			local nextValue = tostring(options[target])
+			if nextValue ~= value then
+				self.Set(self, nextValue)
+			end
+		end
+		function keyEntry:Get() return true end
+		function keyEntry:Set(_, backwards)
+			cycle(backwards == true and -1 or 1)
+		end
+		AttachKeybind(chip, keyEntry, keyCode)
+		self.KeyEntry = keyEntry
+		self.Row = nameRow
 		return self
 	end
 	local function BuildInput(parent, order, o)
@@ -2985,7 +3038,12 @@ end
 						elseif s.Kind == "Slider" then
 							t.Settings[s.Name] = { Kind = "Slider", Value = v }
 						elseif s.Kind == "Dropdown" then
-							t.Settings[s.Name] = { Kind = "Dropdown", Value = v }
+							local ke = s.Obj.KeyEntry
+							t.Settings[s.Name] = {
+								Kind = "Dropdown",
+								Value = v,
+								Keybind = (ke and ke.Keybind) and ke.Keybind.Name or nil,
+							}
 						elseif s.Kind == "Input" then
 							t.Settings[s.Name] = { Kind = "Input", Value = v }
 						end
@@ -3004,6 +3062,12 @@ end
 							s.Obj:Set(RgbTableToColor(saved.Color, Color3.fromRGB(255, 255, 255)))
 						elseif saved.Value ~= nil and s.Obj.Set then
 							s.Obj:Set(saved.Value)
+						end
+						if s.Kind == "Dropdown" and saved.Keybind ~= nil then
+							local ke = s.Obj.KeyEntry
+							if ke and ke.Bind then
+								ke:Bind(type(saved.Keybind) == "string" and Enum.KeyCode[saved.Keybind] or saved.Keybind)
+							end
 						end
 					end
 				end

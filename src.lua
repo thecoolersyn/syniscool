@@ -1506,6 +1506,7 @@ end
 	})
 	local Window = {}
 	local sidebarOrder = 0
+	local sidebarSections = {}
 	local tabs = {}
 	local keybinds = {}
 	local optionKeybindEntries = {}
@@ -3052,6 +3053,7 @@ end
 			end)
 		end
 		local function buildRows()
+			local noBinds = (o.NoKeybinds == true)
 			for _, ch in ipairs(optionsFrame:GetChildren()) do
 				if ch:IsA("TextButton") then
 					ch:Destroy()
@@ -3069,7 +3071,7 @@ end
 				})
 				local lbl = New("TextLabel", {
 					Position = UDim2.new(0, 10, 0, 0),
-					Size = UDim2.new(1, -70, 1, 0),
+					Size = UDim2.new(1, noBinds and -20 or -70, 1, 0),
 					BackgroundTransparency = 1,
 					Text = opStr,
 					FontFace = FONT_SEMIBOLD,
@@ -3079,41 +3081,47 @@ end
 					TextTruncate = Enum.TextTruncate.AtEnd,
 					Parent = rowBtn,
 				})
-				local chip = New("TextButton", {
-					Name = "Keybind",
-					AnchorPoint = Vector2.new(1, 0.5),
-					Position = UDim2.new(1, -8, 0.5, 0),
-					Size = UDim2.new(0, 0, 0, 18),
-					AutomaticSize = Enum.AutomaticSize.X,
-					BackgroundTransparency = 1,
-					BackgroundColor3 = Theme.TextSoft,
-					Text = "[...]",
-					FontFace = FONT_SEMIBOLD,
-					TextSize = 12,
-					TextColor3 = Theme.TextDim,
-					AutoButtonColor = false,
-					BorderSizePixel = 0,
-					Parent = rowBtn,
-				})
-				Corner(chip, 4)
-				Pad(chip, 0, 0, 4, 4)
-				local entry = optionEntries[opStr]
-				if not entry then
-					entry = { Keybind = nil, Kind = "DropdownOption" }
-					entry.OptionName = opStr
-					entry.Owner = marker
-					function entry:Get() return true end
-					function entry:Set()
-						selectOption(entry.OptionName)
-					end
-					optionEntries[opStr] = entry
-					table.insert(keybinds, entry)
-					table.insert(optionKeybindEntries, {
-						Name = opStr,
-						Entry = entry,
+				local chip = nil
+				if not noBinds then
+					chip = New("TextButton", {
+						Name = "Keybind",
+						AnchorPoint = Vector2.new(1, 0.5),
+						Position = UDim2.new(1, -8, 0.5, 0),
+						Size = UDim2.new(0, 0, 0, 18),
+						AutomaticSize = Enum.AutomaticSize.X,
+						BackgroundTransparency = 1,
+						BackgroundColor3 = Theme.TextSoft,
+						Text = "[...]",
+						FontFace = FONT_SEMIBOLD,
+						TextSize = 12,
+						TextColor3 = Theme.TextDim,
+						AutoButtonColor = false,
+						BorderSizePixel = 0,
+						Parent = rowBtn,
 					})
+					Corner(chip, 4)
+					Pad(chip, 0, 0, 4, 4)
 				end
-				attachOptionChip(entry, chip)
+				local entry = nil
+				if not noBinds then
+					entry = optionEntries[opStr]
+					if not entry then
+						entry = { Keybind = nil, Kind = "DropdownOption" }
+						entry.OptionName = opStr
+						entry.Owner = marker
+						function entry:Get() return true end
+						function entry:Set()
+							selectOption(entry.OptionName)
+						end
+						optionEntries[opStr] = entry
+						table.insert(keybinds, entry)
+						table.insert(optionKeybindEntries, {
+							Name = opStr,
+							Entry = entry,
+						})
+					end
+					attachOptionChip(entry, chip)
+				end
 				bindRow(rowBtn, lbl, opt)
 			end
 			optionsFrame.Size = UDim2.new(1, 0, 0, #options * ROW_H)
@@ -3950,6 +3958,46 @@ end
 	end
 	function Window:AddTab(tabOpts)
 		tabOpts = tabOpts or {}
+		if type(tabOpts.Section) == "string" and tabOpts.Section ~= "" and not sidebarSections[tabOpts.Section] then
+			sidebarSections[tabOpts.Section] = true
+			local sep = New("Frame", {
+				Name = "Section_" .. tabOpts.Section,
+				LayoutOrder = sidebarOrder + 1,
+				Size = UDim2.new(1, 0, 0, 22),
+				BackgroundTransparency = 1,
+				Parent = tabScroller,
+			})
+			local sepLine = New("Frame", {
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.new(0, 2, 1, -4),
+				Size = UDim2.new(1, -4, 0, 1),
+				BackgroundColor3 = Theme.Divider,
+				BorderSizePixel = 0,
+				ZIndex = 1,
+				Parent = sep,
+			})
+			local sepLabel = New("TextLabel", {
+				Position = UDim2.new(0, 3, 1, -8.5),
+				Size = UDim2.new(0, 0, 0, 9),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = Theme.Background,
+				BackgroundTransparency = 0,
+				BorderSizePixel = 0,
+				Text = string.upper(tabOpts.Section),
+				Font = Enum.Font.GothamBold,
+				TextSize = 9,
+				TextColor3 = Theme.HeaderText,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				ZIndex = 2,
+				Parent = sep,
+			})
+			bindTheme(function()
+				sepLabel.TextColor3 = Theme.HeaderText
+				sepLabel.BackgroundColor3 = Theme.Background
+				sepLine.BackgroundColor3 = Theme.Divider
+			end)
+			sidebarOrder += 1
+		end
 		sidebarOrder += 1
 		local Tab = { Name = tabOpts.Name or "Tab" }
 		local button = New("TextButton", {
@@ -4082,50 +4130,6 @@ end
 			if sessionInfoInvalidate then sessionInfoInvalidate() end
 			return mod
 		end
-		function Tab:AddCategory(cOpts)
-			local name
-			local override
-			if type(cOpts) == "table" then
-				name = cOpts.Name or cOpts.Title or "Category"
-				override = cOpts.Column
-			else
-				name = tostring(cOpts or "Category")
-			end
-			local column = pickColumn(override)
-			colCount[column] += 1
-			local header = New("Frame", {
-				Name = "Category_" .. name,
-				LayoutOrder = colCount[column],
-				Size = UDim2.new(1, 0, 0, 30),
-				BackgroundTransparency = 1,
-				Parent = column,
-			})
-			local catLabel = New("TextLabel", {
-				Position = UDim2.new(0, 2, 0, 0),
-				Size = UDim2.new(1, -4, 0, 12),
-				BackgroundTransparency = 1,
-				Text = string.upper(name),
-				Font = Enum.Font.GothamBold,
-				TextSize = 10,
-				TextColor3 = Theme.HeaderText,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				Parent = header,
-			})
-			local catLine = New("Frame", {
-				Position = UDim2.new(0, 2, 0, 22),
-				Size = UDim2.new(1, -4, 0, 1),
-				BackgroundColor3 = Theme.Divider,
-				BorderSizePixel = 0,
-				Parent = header,
-			})
-			bindTheme(function()
-				catLabel.TextColor3 = Theme.HeaderText
-				catLine.BackgroundColor3 = Theme.Divider
-			end)
-			colHeight[column] += 30 + CARD_GAP
-			return header
-		end
-		Tab.CreateCategory = Tab.AddCategory
 		function Tab:Select()
 			if currentTab ~= Tab then
 				selectTab(Tab)
@@ -4578,6 +4582,7 @@ end
 	panelLabel("Notification Location", 3)
 	notifyLocationDd = BuildDropdown(panelScroll, 4, {
 		Name = "Location",
+		NoKeybinds = true,
 		Options = NOTIFY_LOCATIONS,
 		Default = notifyLocation,
 		Callback = function(v)
@@ -4587,6 +4592,7 @@ end
 	panelLabel("UI Theme", 5)
 	themeDdObj = BuildDropdown(panelScroll, 6, {
 		Name = "Theme",
+		NoKeybinds = true,
 		Options = THEME_ORDER,
 		Default = themeName,
 		Callback = function(v)
@@ -4597,6 +4603,7 @@ end
 	panelLabel("Config Manager", 7)
 	configDd = BuildDropdown(panelScroll, 8, {
 		Name = "Config",
+		NoKeybinds = true,
 		Options = configNames(),
 		Default = selectedConfig,
 		Callback = function(v)
@@ -5081,6 +5088,7 @@ end
 	panelLabel("UI Reopen Mode", 19)
 	reopenModeDd = BuildDropdown(panelScroll, 20, {
 		Name = "Mode",
+		NoKeybinds = true,
 		Options = { "Floating", "Keybind" },
 		Default = uiReopenMode,
 		Callback = function(v)

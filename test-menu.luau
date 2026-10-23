@@ -19,10 +19,9 @@ local Window = Library:CreateWindow({
 	Size = UDim2.fromOffset(700, 460),
 })
 
--- Combat tab with category separators
-local combat = Window:AddTab({ Name = "Combat", Icon = "sword" })
-combat:AddCategory("Main")
-local movSec = combat:AddSection({ Name = "Movement" })
+-- Combat section: separators appear in the SIDEBAR between tab groups
+local cMain = Window:AddTab({ Name = "Main", Icon = "sword", Section = "Combat" })
+local movSec = cMain:AddSection({ Name = "Movement" })
 local modeDd = movSec:AddDropdown({
 	Name = "Mode",
 	Options = { "Fast", "Slow", "Medium" },
@@ -33,21 +32,16 @@ local modeDd = movSec:AddDropdown({
 })
 movSec:AddToggle({ Name = "Fly Speed", Default = false, NotifyOnToggle = true })
 movSec:AddKeybind({ Name = "Manual Rebind", Default = Enum.KeyCode.B })
-combat:AddCategory("Detections")
-combat:AddSection({ Name = "Staff Detection" })
-combat:AddCategory("Misc")
-combat:AddSection({ Name = "Extra" })
 
-local visuals = Window:AddTab({ Name = "Visuals", Icon = "eye" })
-visuals:AddCategory("Main")
-local espSec = visuals:AddSection({ Name = "ESP" })
-espSec:AddColorPick({ Name = "Box Color", Default = Color3.fromRGB(255, 255, 255) })
-espSec:AddSlider({ Name = "Opacity", Min = 0, Max = 100, Default = 80 })
-visuals:AddSection({ Name = "Chams" })
+Window:AddTab({ Name = "Detections", Section = "Combat" })
+	:AddSection({ Name = "Staff Detection" })
+Window:AddTab({ Name = "Misc", Section = "Combat" })
+	:AddSection({ Name = "Extra" })
 
-local exclusive = Window:AddTab({ Name = "Exclusive", Icon = "crown" })
-exclusive:AddCategory("Main")
-exclusive:AddSection({ Name = "Identity Hider" })
+Window:AddTab({ Name = "Main", Icon = "eye", Section = "Visuals" })
+	:AddSection({ Name = "ESP" })
+Window:AddTab({ Name = "Main", Icon = "crown", Section = "Exclusive" })
+	:AddSection({ Name = "Identity Hider" })
 
 -- Pre-bind the Slow option to X so the keybind list has an example entry
 local slowEntry = modeDd.OptionEntry and modeDd:OptionEntry("Slow")

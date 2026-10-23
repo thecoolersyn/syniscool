@@ -398,6 +398,53 @@ local LucideIcons = {
     ["camera"]           = "rbxassetid://10709789686",
 	["sword"]			 = "rbxassetid://10734975486",
 }
+-- Designated icons: keyword -> Lucide icon, used to auto-icon tabs whose name
+-- or section matches (used when AddTab is called without an Icon).
+local DESIGNATED_ICONS = {
+	["combat"]     = "swords",
+	["battle"]     = "swords",
+	["fight"]      = "swords",
+	["blade"]      = "sword",
+	["detect"]     = "eye-off",
+	["staff"]      = "eye-off",
+	["watch"]      = "eye-off",
+	["visual"]     = "camera",
+	["esp"]        = "camera",
+	["render"]     = "camera",
+	["exclusive"]  = "skull",
+	["special"]    = "skull",
+	["misc"]       = "list",
+	["extra"]      = "list",
+	["other"]      = "list",
+	["config"]     = "folder",
+	["profile"]    = "folder",
+	["script"]     = "terminal",
+	["lua"]        = "terminal",
+	["console"]    = "terminal",
+	["player"]     = "user",
+	["user"]       = "user",
+	["keybind"]    = "keyboard",
+	["settings"]   = "cog",
+	["setting"]    = "cog",
+	["notification"] = "bell",
+	["notify"]     = "bell",
+	["main"]       = "menu",
+	["menu"]       = "menu",
+}
+local function designatedIconFor(tabName, sectionName)
+	local sources = { string.lower(tostring(tabName or "")) }
+	if type(sectionName) == "string" then
+		sources[#sources + 1] = string.lower(sectionName)
+	end
+	for _, src in ipairs(sources) do
+		for keyword, iconKey in pairs(DESIGNATED_ICONS) do
+			if string.find(src, keyword, 1, true) then
+				return iconKey
+			end
+		end
+	end
+	return "menu"
+end
 local TWEEN_FAST   = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_MED    = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local TWEEN_PAGE   = TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
@@ -4026,7 +4073,8 @@ end
 			Parent = tabScroller,
 		})
 		Corner(button, 8)
-		local iconRef = MakeIcon(button, tabOpts.Icon, 17, Theme.TextDim)
+		local iconKey = tabOpts.Icon or designatedIconFor(Tab.Name, tabOpts.Section)
+		local iconRef = MakeIcon(button, iconKey, 17, Theme.TextDim)
 		iconRef.AnchorPoint = Vector2.new(0, 0.5)
 		iconRef.Position = UDim2.new(0, 12, 0.5, 0)
 		local nameLabel = New("TextLabel", {

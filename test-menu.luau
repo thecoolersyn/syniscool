@@ -38,9 +38,9 @@ Window:AddTab({ Name = "Detections", Section = "Combat" })
 Window:AddTab({ Name = "Misc", Section = "Combat" })
 	:AddSection({ Name = "Extra" })
 
-Window:AddTab({ Name = "Main", Icon = "eye", Section = "Visuals" })
+Window:AddTab({ Name = "Main", Icon = "camera", Section = "Visuals" })
 	:AddSection({ Name = "ESP" })
-Window:AddTab({ Name = "Main", Icon = "crown", Section = "Exclusive" })
+Window:AddTab({ Name = "Main", Icon = "skull", Section = "Exclusive" })
 	:AddSection({ Name = "Identity Hider" })
 
 -- Pre-bind the Slow option to X so the keybind list has an example entry

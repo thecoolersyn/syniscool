@@ -4,27 +4,374 @@ local RunService        = game:GetService("RunService")
 local Players           = game:GetService("Players")
 local HttpService       = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
-local Theme = {
-	Background   = Color3.fromRGB(17, 17, 17),
-	Group        = Color3.fromRGB(22, 22, 22),
-	GroupStroke  = Color3.fromRGB(43, 43, 43),
-	Control      = Color3.fromRGB(40, 40, 40),
-	ControlHover = Color3.fromRGB(50, 50, 50),
-	Divider      = Color3.fromRGB(32, 32, 32),
-	Text         = Color3.fromRGB(229, 229, 232),
-	TextDim      = Color3.fromRGB(158, 158, 164),
-	TextSoft     = Color3.fromRGB(214, 214, 218),
-	HeaderText   = Color3.fromRGB(140, 140, 146),
-	TabSelected  = Color3.fromRGB(30, 30, 30),
-	PillOff      = Color3.fromRGB(42, 42, 42),
-	KnobOff      = Color3.fromRGB(216, 216, 216),
-	PillOn       = Color3.fromRGB(236, 236, 236),
-	KnobOn       = Color3.fromRGB(18, 18, 20),
-	SliderTrack  = Color3.fromRGB(45, 45, 45),
-	SliderFill   = Color3.fromRGB(255, 255, 255),
-	CardTransparency = 0.45,
-	NotifyTransparency = 0.45,
+local Theme = {} -- active theme tokens (mutated in place so component readers always see current colors)
+local DEFAULT_THEME = "Default"
+local THEME_ORDER = {
+	"Default", "Cobalt", "Night", "Wave", "Vapor", "Frost",
+	"Midnight", "Obsidian", "Crimson", "Emerald", "Rose", "Slate",
 }
+local THEMES = {
+	Default = {
+		Background   = Color3.fromRGB(17, 17, 17),
+		Group        = Color3.fromRGB(22, 22, 22),
+		GroupStroke  = Color3.fromRGB(43, 43, 43),
+		Control      = Color3.fromRGB(40, 40, 40),
+		ControlHover = Color3.fromRGB(50, 50, 50),
+		Divider      = Color3.fromRGB(32, 32, 32),
+		Text         = Color3.fromRGB(229, 229, 232),
+		TextDim      = Color3.fromRGB(158, 158, 164),
+		TextSoft     = Color3.fromRGB(214, 214, 218),
+		HeaderText   = Color3.fromRGB(140, 140, 146),
+		TabSelected  = Color3.fromRGB(30, 30, 30),
+		PillOff      = Color3.fromRGB(42, 42, 42),
+		KnobOff      = Color3.fromRGB(216, 216, 216),
+		PillOn       = Color3.fromRGB(236, 236, 236),
+		KnobOn       = Color3.fromRGB(18, 18, 20),
+		SliderTrack  = Color3.fromRGB(45, 45, 45),
+		SliderFill   = Color3.fromRGB(255, 255, 255),
+		Scrollbar    = Color3.fromRGB(60, 60, 66),
+		CardTransparency   = 0.45,
+		NotifyTransparency = 0.45,
+		TitleGradient = {
+			Color3.fromRGB(255, 64, 64),
+			Color3.fromRGB(150, 150, 155),
+			Color3.fromRGB(0, 0, 0),
+			Color3.fromRGB(255, 64, 64),
+		},
+	},
+	Cobalt = {
+		Background   = Color3.fromRGB(13, 19, 30),
+		Group        = Color3.fromRGB(19, 27, 42),
+		GroupStroke  = Color3.fromRGB(44, 62, 92),
+		Control      = Color3.fromRGB(28, 40, 61),
+		ControlHover = Color3.fromRGB(38, 54, 80),
+		Divider      = Color3.fromRGB(32, 44, 66),
+		Text         = Color3.fromRGB(232, 238, 247),
+		TextDim      = Color3.fromRGB(150, 164, 188),
+		TextSoft     = Color3.fromRGB(202, 214, 232),
+		HeaderText   = Color3.fromRGB(120, 142, 172),
+		TabSelected  = Color3.fromRGB(24, 34, 52),
+		PillOff      = Color3.fromRGB(42, 54, 74),
+		KnobOff      = Color3.fromRGB(182, 194, 214),
+		PillOn       = Color3.fromRGB(88, 140, 255),
+		KnobOn       = Color3.fromRGB(13, 19, 30),
+		SliderTrack  = Color3.fromRGB(40, 54, 78),
+		SliderFill   = Color3.fromRGB(120, 170, 255),
+		Scrollbar    = Color3.fromRGB(58, 78, 112),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(120, 170, 255),
+			Color3.fromRGB(150, 150, 160),
+			Color3.fromRGB(6, 10, 18),
+			Color3.fromRGB(120, 170, 255),
+		},
+	},
+	Night = {
+		Background   = Color3.fromRGB(10, 10, 12),
+		Group        = Color3.fromRGB(16, 16, 19),
+		GroupStroke  = Color3.fromRGB(34, 34, 40),
+		Control      = Color3.fromRGB(24, 24, 29),
+		ControlHover = Color3.fromRGB(32, 32, 38),
+		Divider      = Color3.fromRGB(26, 26, 31),
+		Text         = Color3.fromRGB(218, 222, 230),
+		TextDim      = Color3.fromRGB(128, 130, 140),
+		TextSoft     = Color3.fromRGB(188, 190, 200),
+		HeaderText   = Color3.fromRGB(112, 112, 122),
+		TabSelected  = Color3.fromRGB(22, 22, 27),
+		PillOff      = Color3.fromRGB(38, 38, 45),
+		KnobOff      = Color3.fromRGB(168, 170, 180),
+		PillOn       = Color3.fromRGB(92, 118, 192),
+		KnobOn       = Color3.fromRGB(10, 10, 12),
+		SliderTrack  = Color3.fromRGB(38, 38, 44),
+		SliderFill   = Color3.fromRGB(124, 152, 220),
+		Scrollbar    = Color3.fromRGB(55, 55, 62),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(110, 140, 210),
+			Color3.fromRGB(140, 140, 148),
+			Color3.fromRGB(4, 4, 6),
+			Color3.fromRGB(110, 140, 210),
+		},
+	},
+	Wave = {
+		Background   = Color3.fromRGB(12, 20, 28),
+		Group        = Color3.fromRGB(17, 27, 38),
+		GroupStroke  = Color3.fromRGB(38, 56, 76),
+		Control      = Color3.fromRGB(25, 39, 53),
+		ControlHover = Color3.fromRGB(34, 52, 69),
+		Divider      = Color3.fromRGB(28, 42, 56),
+		Text         = Color3.fromRGB(224, 238, 245),
+		TextDim      = Color3.fromRGB(140, 162, 178),
+		TextSoft     = Color3.fromRGB(196, 215, 227),
+		HeaderText   = Color3.fromRGB(110, 134, 153),
+		TabSelected  = Color3.fromRGB(23, 36, 49),
+		PillOff      = Color3.fromRGB(42, 57, 70),
+		KnobOff      = Color3.fromRGB(182, 199, 210),
+		PillOn       = Color3.fromRGB(66, 162, 216),
+		KnobOn       = Color3.fromRGB(12, 20, 28),
+		SliderTrack  = Color3.fromRGB(36, 52, 67),
+		SliderFill   = Color3.fromRGB(92, 192, 240),
+		Scrollbar    = Color3.fromRGB(56, 80, 102),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(90, 190, 240),
+			Color3.fromRGB(140, 156, 170),
+			Color3.fromRGB(6, 12, 18),
+			Color3.fromRGB(90, 190, 240),
+		},
+	},
+	Vapor = {
+		Background   = Color3.fromRGB(18, 13, 27),
+		Group        = Color3.fromRGB(26, 19, 38),
+		GroupStroke  = Color3.fromRGB(58, 42, 84),
+		Control      = Color3.fromRGB(36, 26, 52),
+		ControlHover = Color3.fromRGB(47, 36, 66),
+		Divider      = Color3.fromRGB(39, 29, 56),
+		Text         = Color3.fromRGB(236, 229, 248),
+		TextDim      = Color3.fromRGB(160, 148, 180),
+		TextSoft     = Color3.fromRGB(210, 198, 230),
+		HeaderText   = Color3.fromRGB(132, 118, 160),
+		TabSelected  = Color3.fromRGB(32, 24, 47),
+		PillOff      = Color3.fromRGB(50, 40, 70),
+		KnobOff      = Color3.fromRGB(198, 186, 216),
+		PillOn       = Color3.fromRGB(192, 122, 236),
+		KnobOn       = Color3.fromRGB(18, 13, 27),
+		SliderTrack  = Color3.fromRGB(47, 36, 68),
+		SliderFill   = Color3.fromRGB(202, 142, 240),
+		Scrollbar    = Color3.fromRGB(72, 56, 98),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(200, 140, 240),
+			Color3.fromRGB(160, 150, 176),
+			Color3.fromRGB(10, 7, 16),
+			Color3.fromRGB(200, 140, 240),
+		},
+	},
+	Frost = {
+		Background   = Color3.fromRGB(245, 247, 250),
+		Group        = Color3.fromRGB(255, 255, 255),
+		GroupStroke  = Color3.fromRGB(214, 219, 227),
+		Control      = Color3.fromRGB(236, 240, 244),
+		ControlHover = Color3.fromRGB(226, 231, 237),
+		Divider      = Color3.fromRGB(223, 227, 233),
+		Text         = Color3.fromRGB(33, 37, 45),
+		TextDim      = Color3.fromRGB(120, 126, 136),
+		TextSoft     = Color3.fromRGB(66, 72, 84),
+		HeaderText   = Color3.fromRGB(132, 138, 148),
+		TabSelected  = Color3.fromRGB(232, 236, 241),
+		PillOff      = Color3.fromRGB(224, 228, 234),
+		KnobOff      = Color3.fromRGB(252, 253, 255),
+		PillOn       = Color3.fromRGB(82, 104, 244),
+		KnobOn       = Color3.fromRGB(245, 247, 250),
+		SliderTrack  = Color3.fromRGB(222, 226, 233),
+		SliderFill   = Color3.fromRGB(82, 104, 244),
+		Scrollbar    = Color3.fromRGB(178, 184, 194),
+		CardTransparency   = 0.1,
+		NotifyTransparency = 0.12,
+		TitleGradient = {
+			Color3.fromRGB(82, 104, 244),
+			Color3.fromRGB(120, 126, 140),
+			Color3.fromRGB(226, 230, 236),
+			Color3.fromRGB(82, 104, 244),
+		},
+	},
+	Midnight = {
+		Background   = Color3.fromRGB(9, 13, 25),
+		Group        = Color3.fromRGB(14, 19, 35),
+		GroupStroke  = Color3.fromRGB(36, 46, 74),
+		Control      = Color3.fromRGB(22, 30, 51),
+		ControlHover = Color3.fromRGB(30, 40, 65),
+		Divider      = Color3.fromRGB(25, 33, 56),
+		Text         = Color3.fromRGB(214, 224, 242),
+		TextDim      = Color3.fromRGB(132, 144, 170),
+		TextSoft     = Color3.fromRGB(188, 198, 220),
+		HeaderText   = Color3.fromRGB(108, 124, 160),
+		TabSelected  = Color3.fromRGB(19, 26, 45),
+		PillOff      = Color3.fromRGB(44, 53, 75),
+		KnobOff      = Color3.fromRGB(178, 188, 208),
+		PillOn       = Color3.fromRGB(126, 154, 222),
+		KnobOn       = Color3.fromRGB(9, 13, 25),
+		SliderTrack  = Color3.fromRGB(34, 44, 68),
+		SliderFill   = Color3.fromRGB(134, 164, 232),
+		Scrollbar    = Color3.fromRGB(54, 66, 96),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(132, 162, 230),
+			Color3.fromRGB(140, 148, 168),
+			Color3.fromRGB(5, 8, 16),
+			Color3.fromRGB(132, 162, 230),
+		},
+	},
+	Obsidian = {
+		Background   = Color3.fromRGB(13, 13, 15),
+		Group        = Color3.fromRGB(20, 20, 22),
+		GroupStroke  = Color3.fromRGB(44, 44, 47),
+		Control      = Color3.fromRGB(29, 29, 32),
+		ControlHover = Color3.fromRGB(38, 38, 42),
+		Divider      = Color3.fromRGB(33, 33, 36),
+		Text         = Color3.fromRGB(234, 234, 236),
+		TextDim      = Color3.fromRGB(146, 146, 150),
+		TextSoft     = Color3.fromRGB(204, 204, 208),
+		HeaderText   = Color3.fromRGB(128, 128, 133),
+		TabSelected  = Color3.fromRGB(26, 26, 29),
+		PillOff      = Color3.fromRGB(46, 46, 50),
+		KnobOff      = Color3.fromRGB(204, 204, 208),
+		PillOn       = Color3.fromRGB(234, 234, 236),
+		KnobOn       = Color3.fromRGB(13, 13, 15),
+		SliderTrack  = Color3.fromRGB(43, 43, 47),
+		SliderFill   = Color3.fromRGB(234, 234, 236),
+		Scrollbar    = Color3.fromRGB(60, 60, 64),
+		CardTransparency   = 0.42,
+		NotifyTransparency = 0.42,
+		TitleGradient = {
+			Color3.fromRGB(234, 234, 236),
+			Color3.fromRGB(146, 146, 150),
+			Color3.fromRGB(6, 6, 8),
+			Color3.fromRGB(234, 234, 236),
+		},
+	},
+	Crimson = {
+		Background   = Color3.fromRGB(19, 15, 16),
+		Group        = Color3.fromRGB(26, 21, 23),
+		GroupStroke  = Color3.fromRGB(64, 40, 44),
+		Control      = Color3.fromRGB(37, 29, 31),
+		ControlHover = Color3.fromRGB(47, 37, 40),
+		Divider      = Color3.fromRGB(40, 32, 35),
+		Text         = Color3.fromRGB(240, 230, 232),
+		TextDim      = Color3.fromRGB(166, 150, 154),
+		TextSoft     = Color3.fromRGB(216, 200, 205),
+		HeaderText   = Color3.fromRGB(150, 128, 133),
+		TabSelected  = Color3.fromRGB(32, 25, 27),
+		PillOff      = Color3.fromRGB(50, 42, 45),
+		KnobOff      = Color3.fromRGB(198, 184, 187),
+		PillOn       = Color3.fromRGB(226, 62, 72),
+		KnobOn       = Color3.fromRGB(19, 15, 16),
+		SliderTrack  = Color3.fromRGB(47, 38, 41),
+		SliderFill   = Color3.fromRGB(238, 92, 102),
+		Scrollbar    = Color3.fromRGB(82, 56, 60),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(232, 90, 100),
+			Color3.fromRGB(160, 148, 152),
+			Color3.fromRGB(10, 7, 8),
+			Color3.fromRGB(232, 90, 100),
+		},
+	},
+	Emerald = {
+		Background   = Color3.fromRGB(13, 19, 15),
+		Group        = Color3.fromRGB(19, 27, 22),
+		GroupStroke  = Color3.fromRGB(44, 58, 48),
+		Control      = Color3.fromRGB(27, 38, 31),
+		ControlHover = Color3.fromRGB(35, 48, 40),
+		Divider      = Color3.fromRGB(30, 42, 35),
+		Text         = Color3.fromRGB(228, 240, 232),
+		TextDim      = Color3.fromRGB(146, 164, 152),
+		TextSoft     = Color3.fromRGB(200, 216, 206),
+		HeaderText   = Color3.fromRGB(120, 140, 128),
+		TabSelected  = Color3.fromRGB(25, 34, 29),
+		PillOff      = Color3.fromRGB(47, 58, 51),
+		KnobOff      = Color3.fromRGB(184, 198, 188),
+		PillOn       = Color3.fromRGB(62, 192, 112),
+		KnobOn       = Color3.fromRGB(13, 19, 15),
+		SliderTrack  = Color3.fromRGB(39, 52, 44),
+		SliderFill   = Color3.fromRGB(84, 202, 132),
+		Scrollbar    = Color3.fromRGB(54, 74, 62),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(84, 202, 132),
+			Color3.fromRGB(146, 158, 152),
+			Color3.fromRGB(7, 11, 9),
+			Color3.fromRGB(84, 202, 132),
+		},
+	},
+	Rose = {
+		Background   = Color3.fromRGB(19, 17, 18),
+		Group        = Color3.fromRGB(26, 23, 25),
+		GroupStroke  = Color3.fromRGB(58, 46, 50),
+		Control      = Color3.fromRGB(35, 31, 34),
+		ControlHover = Color3.fromRGB(44, 39, 43),
+		Divider      = Color3.fromRGB(37, 33, 36),
+		Text         = Color3.fromRGB(242, 232, 236),
+		TextDim      = Color3.fromRGB(172, 158, 164),
+		TextSoft     = Color3.fromRGB(222, 208, 214),
+		HeaderText   = Color3.fromRGB(154, 138, 145),
+		TabSelected  = Color3.fromRGB(33, 29, 31),
+		PillOff      = Color3.fromRGB(52, 46, 49),
+		KnobOff      = Color3.fromRGB(200, 188, 193),
+		PillOn       = Color3.fromRGB(236, 122, 162),
+		KnobOn       = Color3.fromRGB(19, 17, 18),
+		SliderTrack  = Color3.fromRGB(47, 41, 45),
+		SliderFill   = Color3.fromRGB(242, 132, 172),
+		Scrollbar    = Color3.fromRGB(80, 62, 70),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(240, 130, 170),
+			Color3.fromRGB(164, 152, 160),
+			Color3.fromRGB(10, 8, 9),
+			Color3.fromRGB(240, 130, 170),
+		},
+	},
+	Slate = {
+		Background   = Color3.fromRGB(15, 17, 20),
+		Group        = Color3.fromRGB(22, 25, 30),
+		GroupStroke  = Color3.fromRGB(46, 52, 62),
+		Control      = Color3.fromRGB(30, 34, 40),
+		ControlHover = Color3.fromRGB(39, 44, 52),
+		Divider      = Color3.fromRGB(32, 36, 43),
+		Text         = Color3.fromRGB(228, 234, 240),
+		TextDim      = Color3.fromRGB(146, 154, 165),
+		TextSoft     = Color3.fromRGB(200, 208, 218),
+		HeaderText   = Color3.fromRGB(124, 132, 144),
+		TabSelected  = Color3.fromRGB(24, 28, 34),
+		PillOff      = Color3.fromRGB(49, 55, 64),
+		KnobOff      = Color3.fromRGB(186, 192, 200),
+		PillOn       = Color3.fromRGB(136, 156, 182),
+		KnobOn       = Color3.fromRGB(15, 17, 20),
+		SliderTrack  = Color3.fromRGB(41, 46, 54),
+		SliderFill   = Color3.fromRGB(144, 168, 198),
+		Scrollbar    = Color3.fromRGB(58, 66, 78),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		TitleGradient = {
+			Color3.fromRGB(144, 168, 198),
+			Color3.fromRGB(146, 154, 165),
+			Color3.fromRGB(7, 8, 10),
+			Color3.fromRGB(144, 168, 198),
+		},
+	},
+}
+local themeName = DEFAULT_THEME
+local themeAppliers = {}
+local function applyThemeTokens(name)
+	local t = THEMES[name]
+	if not t then
+		name = DEFAULT_THEME
+		t = THEMES[DEFAULT_THEME]
+	end
+	themeName = name
+	for k, v in pairs(t) do
+		Theme[k] = v
+	end
+	for _, fn in ipairs(themeAppliers) do
+		pcall(fn)
+	end
+	return themeName
+end
+local function SetThemeLocal(name)
+	if type(name) ~= "string" or not THEMES[name] then
+		name = DEFAULT_THEME
+	end
+	return applyThemeTokens(name)
+end
+applyThemeTokens(DEFAULT_THEME)
 local LucideIcons = {
 	["bell"]             = "rbxassetid://10709775704",
 	["bell-off"]         = "rbxassetid://10709775320",
@@ -339,6 +686,7 @@ local function defaultGlobals()
 		SessionInfo = { Enabled = false, Position = nil },
 		GUIKeybind = nil,
 		NotificationLocation = nil,
+		Theme = nil,
 		UIReopenMode = "Floating",
 		FloatingButton = { Position = nil },
 	}
@@ -375,6 +723,9 @@ local function readGlobals()
 	end
 	if decoded.UIReopenMode == "Floating" or decoded.UIReopenMode == "Keybind" then
 		base.UIReopenMode = decoded.UIReopenMode
+	end
+	if type(decoded.Theme) == "string" and THEMES[decoded.Theme] then
+		base.Theme = decoded.Theme
 	end
 	do
 		local fbPos = nil
@@ -458,6 +809,16 @@ function Library:Unload()
 	return true
 end
 function Library:Window() return activeWindow end
+function Library:GetTheme() return themeName end
+function Library:SetTheme(name)
+	local applied = SetThemeLocal(name)
+	return applied
+end
+function Library:GetThemeNames()
+	local out = {}
+	for _, n in ipairs(THEME_ORDER) do out[#out + 1] = n end
+	return out
+end
 
 function Library:CreateWindow(opts)
 	opts = opts or {}
@@ -532,7 +893,22 @@ function Library:CreateWindow(opts)
 		Parent = Gui,
 	})
 	Corner(Main, 12)
-	Stroke(Main, Theme.GroupStroke, 0.4)
+	local mainStroke = Stroke(Main, Theme.GroupStroke, 0.4)
+	local themeRefs = {}
+	local function bindTheme(fn)
+		themeRefs[#themeRefs + 1] = fn
+		pcall(fn)
+	end
+	local themeApplierSlot = #themeAppliers + 1
+	themeAppliers[themeApplierSlot] = function()
+		for _, fn in ipairs(themeRefs) do
+			pcall(fn)
+		end
+	end
+	bindTheme(function()
+		Main.BackgroundColor3 = Theme.Background
+		mainStroke.Color = Theme.GroupStroke
+	end)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
@@ -544,10 +920,26 @@ function Library:CreateWindow(opts)
 		Parent = Main,
 	})
 	Pad(Sidebar, 10, 10, 10, 10)
+	local tabScroller = New("ScrollingFrame", {
+		Name = "Tabs",
+		Size = UDim2.new(1, 0, 1, -46),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = 3,
+		ScrollBarImageColor3 = Theme.Scrollbar,
+		ScrollBarImageTransparency = 0.55,
+		Parent = Sidebar,
+	})
+	bindTheme(function()
+		tabScroller.ScrollBarImageColor3 = Theme.Scrollbar
+	end)
 	New("UIListLayout", {
 		Padding = UDim.new(0, 6),
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = Sidebar,
+		Parent = tabScroller,
 	})
 	local Content = New("Frame", {
 		Name = "Content",
@@ -582,16 +974,25 @@ function Library:CreateWindow(opts)
 	do
 		local grad = New("UIGradient", {
 			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 64, 64)),
-				ColorSequenceKeypoint.new(0.34, Color3.fromRGB(150, 150, 155)),
-				ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 0)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 64, 64)),
+				ColorSequenceKeypoint.new(0, Theme.TitleGradient[1]),
+				ColorSequenceKeypoint.new(0.34, Theme.TitleGradient[2]),
+				ColorSequenceKeypoint.new(0.67, Theme.TitleGradient[3]),
+				ColorSequenceKeypoint.new(1, Theme.TitleGradient[4]),
 			}),
 			Transparency = NumberSequence.new(0),
 			Rotation = 0,
 			Offset = Vector2.new(-1, 0),
 			Parent = titleLabel,
 		})
+		bindTheme(function()
+			local g = Theme.TitleGradient
+			grad.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, g[1]),
+				ColorSequenceKeypoint.new(0.34, g[2]),
+				ColorSequenceKeypoint.new(0.67, g[3]),
+				ColorSequenceKeypoint.new(1, g[4]),
+			})
+		end)
 		local gradT = 0
 		Connect(RunService.Heartbeat, function(dt)
 			if titleLabel.Parent == nil then return end
@@ -605,7 +1006,7 @@ function Library:CreateWindow(opts)
 		logo.Position = UDim2.new(1, -84, 0.5, 0)
 		logo.ZIndex = 7
 	end
-	New("Frame", {
+	local headerDivider = New("Frame", {
 		Position = UDim2.new(0, 0, 0, HEADER_H),
 		Size = UDim2.new(1, 0, 0, 1),
 		BackgroundColor3 = Theme.Divider,
@@ -613,6 +1014,9 @@ function Library:CreateWindow(opts)
 		ZIndex = 6,
 		Parent = Main,
 	})
+	bindTheme(function()
+		headerDivider.BackgroundColor3 = Theme.Divider
+	end)
 local openColorPicker = nil
 local function ColorPreview(parent, order, o)
 	o = o or {}
@@ -660,7 +1064,7 @@ local function ColorPreview(parent, order, o)
 		Parent = swatch,
 	})
 	Corner(swatchFill, 4)
-	Stroke(swatchFill, Theme.GroupStroke, 0.1)
+	local swatchStroke = Stroke(swatchFill, Theme.GroupStroke, 0.1)
 	local POPUP_W, POPUP_H = 216, 158
 	local SPECTRUM_H, BAR_H = 98, 12
 	local popup = New("Frame", {
@@ -674,7 +1078,7 @@ local function ColorPreview(parent, order, o)
 		Parent = Main,
 	})
 	Corner(popup, 9)
-	Stroke(popup, Theme.GroupStroke, 0)
+	local popupStroke = Stroke(popup, Theme.GroupStroke, 0)
 	local guard = New("TextButton", {
 		Name = "ColorGuard",
 		Visible = false,
@@ -762,7 +1166,7 @@ local function ColorPreview(parent, order, o)
 		Parent = popup,
 	})
 	Corner(preview, 4)
-	Stroke(preview, Theme.GroupStroke, 0.1)
+	local previewStroke = Stroke(preview, Theme.GroupStroke, 0.1)
 	local valueLabel = New("TextLabel", {
 		Name = "ValueLabel",
 		Position = UDim2.new(0, 52, 1, -26),
@@ -892,6 +1296,17 @@ local function ColorPreview(parent, order, o)
 		if guard and guard.Parent then guard:Destroy() end
 		if row and row.Parent then row:Destroy() end
 	end
+	bindTheme(function()
+		if not row.Parent then return false end
+		local nameL = row:FindFirstChild("ColorName")
+		if nameL then nameL.TextColor3 = Theme.TextSoft end
+		swatchStroke.Color = Theme.GroupStroke
+		popupStroke.Color = Theme.GroupStroke
+		popup.BackgroundColor3 = Theme.Background
+		previewStroke.Color = Theme.GroupStroke
+		local valL = popup and popup:FindFirstChild("ValueLabel")
+		if valL then valL.TextColor3 = Theme.TextDim end
+	end)
 	return self
 end
 	local panel = nil
@@ -972,6 +1387,9 @@ end
 		Parent = SidebarFX,
 	})
 	Corner(Indicator, 2)
+	bindTheme(function()
+		Indicator.BackgroundColor3 = Theme.Text
+	end)
 	do
 		local ProfileBar = New("Frame", {
 			Name = "ProfileBar",
@@ -987,7 +1405,7 @@ end
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			Parent = ProfileBar,
 		})
-		New("Frame", {
+		local profileSeparator = New("Frame", {
 			Name = "Separator",
 			LayoutOrder = 1,
 			Size = UDim2.new(1, 0, 0, 1),
@@ -1016,7 +1434,7 @@ end
 			Parent = profileRow,
 		})
 		New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = profileAvatar })
-		Stroke(profileAvatar, Theme.GroupStroke, 0.3)
+		local profileStroke = Stroke(profileAvatar, Theme.GroupStroke, 0.3)
 		local profileName = "User"
 		pcall(function()
 			if LocalPlayer and LocalPlayer.DisplayName and LocalPlayer.DisplayName ~= "" then
@@ -1044,6 +1462,19 @@ end
 		nameLabel.MouseLeave:Connect(function()
 			nameLabel.Text = "********"
 			Tween(nameLabel, TWEEN_FAST, { TextColor3 = Theme.TextDim })
+		end)
+		local profileHovered = false
+		nameLabel.MouseEnter:Connect(function()
+			profileHovered = true
+		end)
+		nameLabel.MouseLeave:Connect(function()
+			profileHovered = false
+		end)
+		bindTheme(function()
+			profileSeparator.BackgroundColor3 = Theme.Divider
+			profileAvatar.BackgroundColor3 = Theme.Control
+			profileStroke.Color = Theme.GroupStroke
+			nameLabel.TextColor3 = profileHovered and Theme.Text or Theme.TextDim
 		end)
 		task.spawn(function()
 			local ok, url = pcall(function()
@@ -1084,6 +1515,75 @@ end
 	local uiVisible = false
 	local indicatorConn = nil
 	local destroyed = false
+	-- Compact/mobile scaling: shrink the entire window on small viewports or touch-only devices
+	local mobileScale = 1
+	local lastViewportCam = nil
+	local viewportConn = nil
+	local updateMobileScale = nil
+	local function unhookViewportCam()
+		if viewportConn then
+			pcall(function() viewportConn:Disconnect() end)
+			viewportConn = nil
+		end
+	end
+	local function hookViewportCam()
+		local cam = workspace.CurrentCamera
+		if cam and cam ~= lastViewportCam then
+			lastViewportCam = cam
+			unhookViewportCam()
+			viewportConn = Connect(cam:GetPropertyChangedSignal("ViewportSize"), function()
+				if updateMobileScale then updateMobileScale() end
+			end)
+		end
+	end
+	local function computeMobileScale()
+		hookViewportCam()
+		local vp = Vector2.new(1920, 1080)
+		pcall(function()
+			local cam = workspace.CurrentCamera
+			if cam and cam.ViewportSize.X > 0 then
+				vp = cam.ViewportSize
+			end
+		end)
+		if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
+			local minDim = math.min(vp.X, vp.Y)
+			if minDim <= 640 then
+				return 0.62
+			elseif minDim <= 820 then
+				return 0.72
+			elseif minDim <= 1100 then
+				return 0.82
+			end
+			return 0.92
+		elseif vp.X < 760 or vp.Y < 520 then
+			return 0.72
+		elseif vp.X < 980 or vp.Y < 640 then
+			return 0.82
+		end
+		return 1
+	end
+	local function applyUiScale()
+		local base = uiVisible and 1 or 0.96
+		uiScale.Scale = base * mobileScale
+		if panelScale then
+			panelScale.Scale = base * mobileScale
+		end
+	end
+	updateMobileScale = function()
+		if destroyed then return end
+		local scale = computeMobileScale()
+		if scale ~= mobileScale then
+			mobileScale = scale
+		end
+		applyUiScale()
+		if syncPanelPosition then syncPanelPosition() end
+	end
+	Connect(workspace:GetPropertyChangedSignal("CurrentCamera"), function()
+		if updateMobileScale then updateMobileScale() end
+	end)
+	task.defer(function()
+		if updateMobileScale then updateMobileScale() end
+	end)
 	local smoothSliders = {}
 	local SMOOTH_SPEED = 12
 	local notifyLocation = opts.NotifyLocation or "Corner Right"
@@ -1119,12 +1619,12 @@ end
 		if instant then
 			Main.Visible = visible
 			Main.GroupTransparency = visible and 0 or 1
-			uiScale.Scale = visible and 1 or 0.96
+			uiScale.Scale = (visible and 1 or 0.96) * mobileScale
 			Main.Position = uiHomePos
 			if panel then
 				panel.Visible = visible and panelOpen
 				panel.GroupTransparency = visible and 0 or 1
-				panelScale.Scale = visible and 1 or 0.96
+				panelScale.Scale = (visible and 1 or 0.96) * mobileScale
 				if visible and panelOpen and syncPanelPosition then syncPanelPosition() end
 			end
 			if updateFloatingVisibility then updateFloatingVisibility() end
@@ -1143,23 +1643,23 @@ end
 				GroupTransparency = 0,
 				Position = uiHomePos,
 			})
-			Tween(uiScale, TWEEN_OPEN, { Scale = 1 })
+			Tween(uiScale, TWEEN_OPEN, { Scale = mobileScale })
 			if panel and panelOpen then
 				panel.Visible = true
 				if syncPanelPosition then syncPanelPosition() end
 				panel.GroupTransparency = 1
 				Tween(panel, TWEEN_OPEN, { GroupTransparency = 0 })
-				Tween(panelScale, TWEEN_OPEN, { Scale = 1 })
+				Tween(panelScale, TWEEN_OPEN, { Scale = mobileScale })
 				task.delay(TWEEN_OPEN.Time, function()
 					if uiVisible and syncPanelPosition then syncPanelPosition() end
 				end)
 			end
 		else
 			Tween(Main, TWEEN_MED, { GroupTransparency = 1 })
-			Tween(uiScale, TWEEN_MED, { Scale = 0.96 })
+			Tween(uiScale, TWEEN_MED, { Scale = 0.96 * mobileScale })
 			if panel and panel.Visible then
 				Tween(panel, TWEEN_MED, { GroupTransparency = 1 })
-				Tween(panelScale, TWEEN_MED, { Scale = 0.96 })
+				Tween(panelScale, TWEEN_MED, { Scale = 0.96 * mobileScale })
 				task.delay(0.24, function()
 					if not uiVisible and panel then panel.Visible = false end
 				end)
@@ -1305,13 +1805,22 @@ end
 				end
 			end
 		end
+		bindTheme(function()
+			local b = floatingBtn
+			if b and b.Parent then
+				b.BackgroundColor3 = Theme.Group
+				local bs = b:FindFirstChildOfClass("UIStroke")
+				if bs then bs.Color = Theme.GroupStroke end
+				local img = b:FindFirstChildWhichIsA("ImageLabel")
+				if img then img.ImageColor3 = Theme.Text end
+			end
+		end)
 		setReopenMode = function(mode, skipSave)
 			if mode ~= "Floating" and mode ~= "Keybind" then return uiReopenMode end
 			if mode == uiReopenMode then
 				if mode == "Floating" and not uiVisible then
 					updateFloatingVisibility()
-				end
-				return uiReopenMode
+				end				return uiReopenMode
 			end
 			uiReopenMode = mode
 			if reopenModeDd and reopenModeDd.SetSilent then
@@ -1377,7 +1886,7 @@ end
 			Parent = NotifyHolder,
 		})
 		Corner(toast, 10)
-		Stroke(toast, Theme.GroupStroke, 0.2)
+		local toastStroke = Stroke(toast, Theme.GroupStroke, 0.2)
 		local iconKey = n.Icon
 		if iconKey == nil then
 			iconKey = (n.Kind == "error" or n.State == false) and "x" or "check"
@@ -1445,6 +1954,21 @@ end
 			Parent = cdTrack,
 		})
 		Corner(cdFill, 1)
+		bindTheme(function()
+			if not toast.Parent then return end
+			toast.BackgroundColor3 = Theme.Group
+			toast.BackgroundTransparency = Theme.NotifyTransparency
+			toastStroke.Color = Theme.GroupStroke
+			cdTrack.BackgroundColor3 = Theme.Divider
+			cdFill.BackgroundColor3 = Theme.Text
+			local tl = textCol:FindFirstChild("NotifyTitle")
+			if tl then tl.TextColor3 = Theme.Text end
+			local bl = textCol:FindFirstChild("NotifyBody")
+			if bl then bl.TextColor3 = Theme.TextDim end
+			if icon:IsA("ImageLabel") and not n.IconColor then
+				icon.ImageColor3 = Theme.Text
+			end
+		end)
 		Tween(toast, TWEEN_NOTIFY_IN, { GroupTransparency = 0, Position = UDim2.fromOffset(0, 0) })
 		Tween(cdFill, TweenInfo.new(duration, Enum.EasingStyle.Linear), { Size = UDim2.fromScale(1, 1) })
 		task.delay(duration, function()
@@ -1685,7 +2209,7 @@ end
 			Parent = Gui,
 		})
 		Corner(kbFrame, 9)
-		Stroke(kbFrame, Theme.GroupStroke, 0.3)
+		local kbStroke = Stroke(kbFrame, Theme.GroupStroke, 0.3)
 		New("UIListLayout", {
 			Padding = UDim.new(0, 4),
 			SortOrder = Enum.SortOrder.LayoutOrder,
@@ -1706,7 +2230,7 @@ end
 		hic.AnchorPoint = Vector2.new(0, 0.5)
 		hic.Position = UDim2.new(0, 0, 0.5, 0)
 		hic.ZIndex = 51
-		New("TextLabel", {
+		local kbHeadLabel = New("TextLabel", {
 			Position = UDim2.new(0, 20, 0, 0),
 			Size = UDim2.new(1, -20, 1, 0),
 			BackgroundTransparency = 1,
@@ -1724,7 +2248,7 @@ end
 			Size = UDim2.new(1, 0, 0, 0),
 			BackgroundTransparency = 1,
 			ScrollBarThickness = 3,
-			ScrollBarImageColor3 = Color3.fromRGB(60, 60, 66),
+			ScrollBarImageColor3 = Theme.Scrollbar,
 			CanvasSize = UDim2.new(0, 0, 0, 0),
 			ScrollingDirection = Enum.ScrollingDirection.Y,
 			BorderSizePixel = 0,
@@ -1738,6 +2262,15 @@ end
 		})
 		Connect(kbListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), queueKbSync)
 		makeOverlayDraggable(kbFrame, kbDragVeto, function() kbDragged = true end)
+		bindTheme(function()
+			kbFrame.BackgroundColor3 = Theme.Group
+			kbFrame.BackgroundTransparency = Theme.CardTransparency
+			kbStroke.Color = Theme.GroupStroke
+			kbScroller.ScrollBarImageColor3 = Theme.Scrollbar
+			hic.ImageColor3 = Theme.HeaderText
+			kbHeadLabel.TextColor3 = Theme.HeaderText
+			if kbEnabled then rebuildKeybindList() end
+		end)
 	end
 	local function SetKeybindList(v)
 		v = v == true
@@ -1788,7 +2321,7 @@ end
 			Parent = Gui,
 		})
 		Corner(wmFrame, 9)
-		Stroke(wmFrame, Theme.GroupStroke, 0.35)
+		local wmStroke = Stroke(wmFrame, Theme.GroupStroke, 0.35)
 		New("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -1810,7 +2343,7 @@ end
 		})
 		Corner(wmAvatar, 8)
 		local function wmDivider(order)
-			return New("Frame", {
+			local d = New("Frame", {
 				LayoutOrder = order,
 				Size = UDim2.new(0, 1, 0, 14),
 				BackgroundColor3 = Theme.Divider,
@@ -1818,9 +2351,13 @@ end
 				ZIndex = 51,
 				Parent = wmFrame,
 			})
+			bindTheme(function()
+				if d.Parent then d.BackgroundColor3 = Theme.Divider end
+			end)
+			return d
 		end
 		wmDivider(2)
-		New("TextLabel", {
+		local wmGameLabel = New("TextLabel", {
 			Name = "GameName",
 			LayoutOrder = 3,
 			Size = UDim2.new(0, 0, 1, 0),
@@ -1864,6 +2401,14 @@ end
 			Parent = wmFrame,
 		})
 		makeOverlayDraggable(wmFrame, nil, function() wmDragged = true end)
+		bindTheme(function()
+			wmFrame.BackgroundColor3 = Theme.Group
+			wmStroke.Color = Theme.GroupStroke
+			wmAvatar.BackgroundColor3 = Theme.Control
+			wmGameLabel.TextColor3 = Theme.TextSoft
+			wmFpsLabel.TextColor3 = Theme.TextSoft
+			wmPingLabel.TextColor3 = Theme.TextSoft
+		end)
 		task.spawn(function()
 			local ok, url = pcall(function()
 				return Players:GetUserThumbnailAsync(
@@ -1962,7 +2507,7 @@ end
 			ZIndex = 52,
 			Parent = siFrame,
 		})
-		New("TextLabel", {
+		local rowLabel = New("TextLabel", {
 			Position = UDim2.new(0, 0, 0, 0),
 			Size = UDim2.new(1, -70, 1, 0),
 			BackgroundTransparency = 1,
@@ -1989,6 +2534,10 @@ end
 			ZIndex = 52,
 			Parent = row,
 		})
+		bindTheme(function()
+			rowLabel.TextColor3 = Theme.TextSoft
+			val.TextColor3 = Theme.Text
+		end)
 		return val
 	end
 	local function ensureSessionInfo()
@@ -2008,7 +2557,7 @@ end
 			Parent = Gui,
 		})
 		Corner(siFrame, 9)
-		Stroke(siFrame, Theme.GroupStroke, 0.3)
+		local siStroke = Stroke(siFrame, Theme.GroupStroke, 0.3)
 		New("UIListLayout", {
 			Padding = UDim.new(0, 4),
 			SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2029,7 +2578,7 @@ end
 		hic.AnchorPoint = Vector2.new(0, 0.5)
 		hic.Position = UDim2.new(0, 0, 0.5, 0)
 		hic.ZIndex = 51
-		New("TextLabel", {
+		local siHeadLabel = New("TextLabel", {
 			Position = UDim2.new(0, 20, 0, 0),
 			Size = UDim2.new(1, -20, 1, 0),
 			BackgroundTransparency = 1,
@@ -2046,6 +2595,12 @@ end
 		siPlayersLabel = siRow(4, "Player Count")
 		siModulesLabel = siRow(5, "Module Enabled")
 		makeOverlayDraggable(siFrame, nil, function() siDragged = true end)
+		bindTheme(function()
+			siFrame.BackgroundColor3 = Theme.Group
+			siStroke.Color = Theme.GroupStroke
+			hic.ImageColor3 = Theme.HeaderText
+			siHeadLabel.TextColor3 = Theme.HeaderText
+		end)
 		Connect(Players.PlayerAdded, function() refreshSessionValues() end)
 		Connect(Players.PlayerRemoving, function() refreshSessionValues() end)
 		refreshSessionValues()
@@ -2086,6 +2641,9 @@ end
 				TextColor3 = entry.Keybind and Theme.TextSoft or Theme.TextDim,
 			})
 		end
+		bindTheme(function()
+			refresh()
+		end)
 		function entry:RefreshChip()
 			refresh()
 		end
@@ -2136,7 +2694,7 @@ end
 			AutoButtonColor = false,
 			Parent = row,
 		})
-		New("TextLabel", {
+		local toggleNameLabel = New("TextLabel", {
 			Size = UDim2.new(1, -96, 1, 0),
 			BackgroundTransparency = 1,
 			Text = o.Name,
@@ -2200,6 +2758,10 @@ end
 		})
 		Corner(chip, 5)
 		Pad(chip, 0, 0, 5, 5)
+		bindTheme(function()
+			toggleNameLabel.TextColor3 = Theme.Text
+			apply(false)
+		end)
 		return AttachKeybind(chip, entry, keyCode)
 	end
 	local function BuildSlider(parent, order, o)
@@ -2215,7 +2777,7 @@ end
 			BackgroundTransparency = 1,
 			Parent = parent,
 		})
-		New("TextLabel", {
+		local sliderNameLabel = New("TextLabel", {
 			Size = UDim2.new(1, -40, 0, 15),
 			BackgroundTransparency = 1,
 			Text = o.Name,
@@ -2342,15 +2904,18 @@ end
 			slider.Fire = true
 			smoothSliders[slider] = true
 		end
+		bindTheme(function()
+			sliderNameLabel.TextColor3 = Theme.TextSoft
+			valueLabel.TextColor3 = Theme.Text
+			track.BackgroundColor3 = Theme.SliderTrack
+			fill.BackgroundColor3 = Theme.SliderFill
+			knob.BackgroundColor3 = Theme.SliderFill
+		end)
 		return slider
 	end
 	local function BuildDropdown(parent, order, o)
 		local options = o.Options or {}
 		local value = o.Default or options[1]
-		local keyCode = nil
-		if o.Keybind and Enum.KeyCode[o.Keybind] then
-			keyCode = Enum.KeyCode[o.Keybind]
-		end
 		local HEADER_H = 26
 		local ROW_H = 23
 		local box = New("Frame", {
@@ -2362,7 +2927,7 @@ end
 			Parent = parent,
 		})
 		New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, Parent = box })
-		New("TextLabel", {
+		local ddNameLabel = New("TextLabel", {
 			LayoutOrder = 1,
 			Size = UDim2.new(1, 0, 0, 14),
 			BackgroundTransparency = 1,
@@ -2391,7 +2956,7 @@ end
 		})
 		local valueText = New("TextLabel", {
 			Position = UDim2.new(0, 10, 0, 0),
-			Size = UDim2.new(1, -84, 1, 0),
+			Size = UDim2.new(1, -34, 1, 0),
 			BackgroundTransparency = 1,
 			Text = tostring(value),
 			FontFace = FONT_SEMIBOLD,
@@ -2401,24 +2966,6 @@ end
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Parent = header,
 		})
-		local chip = New("TextButton", {
-			Name = "Keybind",
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -26, 0.5, 0),
-			Size = UDim2.new(0, 0, 0, 20),
-			AutomaticSize = Enum.AutomaticSize.X,
-			BackgroundTransparency = 1,
-			BackgroundColor3 = Theme.TextSoft,
-			Text = KeybindText(keyCode),
-			FontFace = FONT_SEMIBOLD,
-			TextSize = 13,
-			TextColor3 = Theme.TextDim,
-			AutoButtonColor = false,
-			BorderSizePixel = 0,
-			Parent = holder,
-		})
-		Corner(chip, 5)
-		Pad(chip, 0, 0, 5, 5)
 		local chev = MakeIcon(header, "chevrons-up-down", 14, Theme.TextDim)
 		chev.AnchorPoint = Vector2.new(1, 0.5)
 		chev.Position = UDim2.new(1, -8, 0.5, 0)
@@ -2444,7 +2991,6 @@ end
 		local function selectOption(opStr)
 			for _, v in ipairs(options) do
 				if tostring(v) == opStr then
-					setOpen(false)
 					if value ~= opStr then
 						value = opStr
 						valueText.Text = value
@@ -2663,29 +3209,15 @@ end
 			end
 		end
 		self.OptionEntry = function(_, opStr) return optionEntries[opStr] end
-		local keyEntry = { Kind = "DropdownKey" }
-		local function cycle(delta)
-			if #options == 0 then return end
-			local index = 1
-			for i, v in ipairs(options) do
-				if tostring(v) == value then
-					index = i
-					break
-				end
-			end
-			local target = ((index - 1 + delta) % #options) + 1
-			local nextValue = tostring(options[target])
-			if nextValue ~= value then
-				self.Set(self, nextValue)
-			end
-		end
-		function keyEntry:Get() return true end
-		function keyEntry:Set(_, backwards)
-			cycle(backwards == true and -1 or 1)
-		end
-		AttachKeybind(chip, keyEntry, keyCode)
-		self.KeyEntry = keyEntry
 		self.Row = holder
+		bindTheme(function()
+			if not holder.Parent then return end
+			ddNameLabel.TextColor3 = Theme.TextSoft
+			holder.BackgroundColor3 = Theme.Control
+			valueText.TextColor3 = Theme.TextSoft
+			chev.ImageColor3 = Theme.TextDim
+			buildRows()
+		end)
 		return self
 	end
 	local function BuildInput(parent, order, o)
@@ -2698,7 +3230,7 @@ end
 			BackgroundTransparency = 1,
 			Parent = parent,
 		})
-		New("TextLabel", {
+		local inputNameLabel = New("TextLabel", {
 			Size = UDim2.new(1, 0, 0, 14),
 			BackgroundTransparency = 1,
 			Text = o.Name or "Input",
@@ -2739,6 +3271,11 @@ end
 		end
 		self.SetValue = function(_, v, fire) self:Set(v, fire) end
 		self.Object = field
+		bindTheme(function()
+			inputNameLabel.TextColor3 = Theme.TextSoft
+			field.BackgroundColor3 = Theme.Control
+			field.TextColor3 = Theme.Text
+		end)
 		return self
 	end
 	local function BuildKeybindRow(parent, order, o)
@@ -2756,7 +3293,7 @@ end
 			BackgroundTransparency = 1,
 			Parent = parent,
 		})
-		New("TextLabel", {
+		local kbNameLabel = New("TextLabel", {
 			Size = UDim2.new(1, -58, 1, 0),
 			BackgroundTransparency = 1,
 			Text = o.Name or "Keybind",
@@ -2792,6 +3329,9 @@ end
 		end
 		AttachKeybind(chip, entry, keyCode)
 		entry.Row = row
+		bindTheme(function()
+			kbNameLabel.TextColor3 = Theme.TextSoft
+		end)
 		return entry
 	end
 	local function BuildButton(parent, order, o)
@@ -2816,10 +3356,14 @@ end
 		btn.MouseButton1Click:Connect(function()
 			if o.Callback then task.spawn(o.Callback) end
 		end)
+		bindTheme(function()
+			btn.BackgroundColor3 = Theme.Control
+			btn.TextColor3 = Theme.TextSoft
+		end)
 		return btn
 	end
 	local function BuildLabel(parent, order, o)
-		return New("TextLabel", {
+		local lbl = New("TextLabel", {
 			Name = "Label",
 			LayoutOrder = order,
 			Size = UDim2.new(1, 0, 0, 0),
@@ -2834,6 +3378,12 @@ end
 			TextYAlignment = Enum.TextYAlignment.Top,
 			Parent = parent,
 		})
+		if not o.Color then
+			bindTheme(function()
+				lbl.TextColor3 = Theme.TextDim
+			end)
+		end
+		return lbl
 	end
 	local CARD_H   = 76
 	local BOTTOM_Y = 42
@@ -2859,7 +3409,7 @@ end
 			Parent = columnFrame,
 		})
 		Corner(card, 11)
-		Stroke(card, Theme.GroupStroke, 0.3)
+		local moduleStroke = Stroke(card, Theme.GroupStroke, 0.3)
 		New("UIListLayout", {
 			Padding = UDim.new(0, 0),
 			SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2872,7 +3422,7 @@ end
 			BackgroundTransparency = 1,
 			Parent = card,
 		})
-		New("TextLabel", {
+		local moduleNameLabel = New("TextLabel", {
 			Name = "ModuleName",
 			Position = UDim2.new(0, 14, 0, 12),
 			Size = UDim2.new(1, -104, 0, 18),
@@ -3327,6 +3877,17 @@ end
 			entry.Keybind = Enum.KeyCode[o.Keybind]
 		end
 		AttachKeybind(chip, entry, entry.Keybind)
+		bindTheme(function()
+			card.BackgroundColor3 = Theme.Group
+			card.BackgroundTransparency = Theme.CardTransparency
+			moduleStroke.Color = Theme.GroupStroke
+			moduleNameLabel.TextColor3 = Theme.Text
+			stateLabel.TextColor3 = state and Theme.Text or Theme.TextDim
+			pill.BackgroundColor3 = state and Theme.PillOn or Theme.PillOff
+			knob.BackgroundColor3 = state and Theme.KnobOn or Theme.KnobOff
+			refreshBell()
+			refreshCfgIcon()
+		end)
 		table.insert(modules, Module)
 		return Module
 	end
@@ -3400,7 +3961,7 @@ end
 			Text = "",
 			AutoButtonColor = false,
 			BorderSizePixel = 0,
-			Parent = Sidebar,
+			Parent = tabScroller,
 		})
 		Corner(button, 8)
 		local iconRef = MakeIcon(button, tabOpts.Icon, 17, Theme.TextDim)
@@ -3417,6 +3978,17 @@ end
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Parent = button,
 		})
+		bindTheme(function()
+			local sel = (currentTab == Tab)
+			button.BackgroundColor3 = Theme.TabSelected
+			button.BackgroundTransparency = sel and 0 or 1
+			nameLabel.TextColor3 = sel and Theme.Text or Theme.TextDim
+			if iconRef:IsA("ImageLabel") then
+				iconRef.ImageColor3 = sel and Theme.Text or Theme.TextDim
+			elseif iconRef:IsA("Frame") then
+				iconRef.BackgroundColor3 = sel and Theme.Text or Theme.TextDim
+			end
+		end)
 		button.MouseEnter:Connect(function()
 			if currentTab ~= Tab then
 				Tween(button, TWEEN_FAST, { BackgroundTransparency = 0.6 })
@@ -3441,13 +4013,16 @@ end
 			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
 			ScrollBarThickness = 4,
-			ScrollBarImageColor3 = Color3.fromRGB(60, 60, 66),
+			ScrollBarImageColor3 = Theme.Scrollbar,
 			AutomaticCanvasSize = Enum.AutomaticSize.Y,
 			CanvasSize = UDim2.new(0, 0, 0, 0),
 			ScrollingDirection = Enum.ScrollingDirection.Y,
 			BorderSizePixel = 0,
 			Parent = page,
 		})
+		bindTheme(function()
+			scroller.ScrollBarImageColor3 = Theme.Scrollbar
+		end)
 		Pad(scroller, 0, 0, 0, 4)
 		local holder = New("Frame", {
 			Name = "Columns",
@@ -3507,6 +4082,50 @@ end
 			if sessionInfoInvalidate then sessionInfoInvalidate() end
 			return mod
 		end
+		function Tab:AddCategory(cOpts)
+			local name
+			local override
+			if type(cOpts) == "table" then
+				name = cOpts.Name or cOpts.Title or "Category"
+				override = cOpts.Column
+			else
+				name = tostring(cOpts or "Category")
+			end
+			local column = pickColumn(override)
+			colCount[column] += 1
+			local header = New("Frame", {
+				Name = "Category_" .. name,
+				LayoutOrder = colCount[column],
+				Size = UDim2.new(1, 0, 0, 30),
+				BackgroundTransparency = 1,
+				Parent = column,
+			})
+			local catLabel = New("TextLabel", {
+				Position = UDim2.new(0, 2, 0, 0),
+				Size = UDim2.new(1, -4, 0, 12),
+				BackgroundTransparency = 1,
+				Text = string.upper(name),
+				Font = Enum.Font.GothamBold,
+				TextSize = 10,
+				TextColor3 = Theme.HeaderText,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				Parent = header,
+			})
+			local catLine = New("Frame", {
+				Position = UDim2.new(0, 2, 0, 22),
+				Size = UDim2.new(1, -4, 0, 1),
+				BackgroundColor3 = Theme.Divider,
+				BorderSizePixel = 0,
+				Parent = header,
+			})
+			bindTheme(function()
+				catLabel.TextColor3 = Theme.HeaderText
+				catLine.BackgroundColor3 = Theme.Divider
+			end)
+			colHeight[column] += 30 + CARD_GAP
+			return header
+		end
+		Tab.CreateCategory = Tab.AddCategory
 		function Tab:Select()
 			if currentTab ~= Tab then
 				selectTab(Tab)
@@ -3680,11 +4299,11 @@ end
 			end)
 		end
 		if panelScale then
-			Tween(panelScale, TWEEN_MED, { Scale = v and 1 or 0.96 })
+			Tween(panelScale, TWEEN_MED, { Scale = (v and 1 or 0.96) * mobileScale })
 		end
 	end
 	setPanel = setPanelBinding
-	New("Frame", {
+	local panelEdgeDivider = New("Frame", {
 		AnchorPoint = Vector2.new(0, 0),
 		Position = UDim2.new(0, 0, 0, 0),
 		Size = UDim2.new(0, 1, 1, 0),
@@ -3699,7 +4318,7 @@ end
 		Size = UDim2.new(1, -8, 1, 0),
 		BackgroundTransparency = 1,
 		ScrollBarThickness = 4,
-		ScrollBarImageColor3 = Color3.fromRGB(60, 60, 66),
+		ScrollBarImageColor3 = Theme.Scrollbar,
 		AutomaticCanvasSize = Enum.AutomaticSize.None,
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		ScrollingDirection = Enum.ScrollingDirection.Y,
@@ -3707,6 +4326,17 @@ end
 		ZIndex = 21,
 		Parent = panel,
 	})
+	-- panel + edge divider + scrollbar theming
+	local panelStrokeRef
+	for _, child in ipairs(panel:GetDescendants()) do
+		if child:IsA("UIStroke") then panelStrokeRef = child break end
+	end
+	bindTheme(function()
+		panelEdgeDivider.BackgroundColor3 = Theme.Divider
+		panelScroll.ScrollBarImageColor3 = Theme.Scrollbar
+		if panelStrokeRef then panelStrokeRef.Color = Theme.GroupStroke end
+		panel.BackgroundColor3 = Theme.Background
+	end)
 	Pad(panelScroll, 12, 12, 14, 10)
 	local panelLayout = New("UIListLayout", {
 		Padding = UDim.new(0, 9),
@@ -3729,7 +4359,7 @@ end
 	end)
 	task.defer(syncPanelCanvas)
 	local function panelLabel(text, order)
-		return New("TextLabel", {
+		local lbl = New("TextLabel", {
 			Name = "H_" .. text,
 			LayoutOrder = order,
 			Size = UDim2.new(1, 0, 0, 12),
@@ -3742,6 +4372,10 @@ end
 			ZIndex = 22,
 			Parent = panelScroll,
 		})
+		bindTheme(function()
+			lbl.TextColor3 = Theme.HeaderText
+		end)
+		return lbl
 	end
 	local gearBtn = IconButton(Header, 28, 7)
 	gearBtn.Name = "SettingsGear"
@@ -3768,6 +4402,10 @@ end
 		if destroyed then return end
 		setVisible(false)
 	end)
+	bindTheme(function()
+		gearIcon.ImageColor3 = Theme.TextDim
+		minimizeIcon.ImageColor3 = Theme.TextDim
+	end)
 	do
 		local spin = 0
 		local spinConn = nil
@@ -3792,7 +4430,7 @@ end
 	local configCache = {}
 	local configWatchers = {}
 	local selectedConfig = CONFIG_DEFAULT
-	local notifyLocationDd, configDd, guiKeyEntry
+	local notifyLocationDd, configDd, guiKeyEntry, themeDdObj
 	local refreshConfigDropdown
 	local function configFile(name)
 		return CONFIG_DIR .. "/" .. name .. ".json"
@@ -3946,8 +4584,18 @@ end
 			SetNotifyLocation(v)
 		end,
 	})
-	panelLabel("Config Manager", 5)
-	configDd = BuildDropdown(panelScroll, 6, {
+	panelLabel("UI Theme", 5)
+	themeDdObj = BuildDropdown(panelScroll, 6, {
+		Name = "Theme",
+		Options = THEME_ORDER,
+		Default = themeName,
+		Callback = function(v)
+			SetThemeLocal(v)
+			if saveGlobalsSoon then saveGlobalsSoon() end
+		end,
+	})
+	panelLabel("Config Manager", 7)
+	configDd = BuildDropdown(panelScroll, 8, {
 		Name = "Config",
 		Options = configNames(),
 		Default = selectedConfig,
@@ -3992,7 +4640,7 @@ end
 	function Window:RefreshConfigs()
 		refreshConfigDropdown()
 	end
-	BuildButton(panelScroll, 7, {
+	BuildButton(panelScroll, 9, {
 		Name = "Save Config",
 		Callback = function()
 			if selectedConfig == CONFIG_DEFAULT then
@@ -4006,7 +4654,7 @@ end
 			end
 		end,
 	})
-	BuildButton(panelScroll, 8, {
+	BuildButton(panelScroll, 10, {
 		Name = "Reload Configs",
 		Callback = function()
 			refreshConfigDropdown()
@@ -4208,15 +4856,15 @@ end
 		Window:Notify({ Title = "Configs", Text = "Could not delete " .. target, Icon = "x" })
 		return false
 	end
-	BuildButton(panelScroll, 9, {
+	BuildButton(panelScroll, 11, {
 		Name = "Add New Config",
 		Callback = openNameModal,
 	})
-	BuildButton(panelScroll, 10, {
+	BuildButton(panelScroll, 12, {
 		Name = "Delete Selected Config",
 		Callback = deleteSelectedConfig,
 	})
-	panelLabel("Display", 11)
+	panelLabel("Display", 13)
 	local function panelSwitch(labelText, order, initial, onChange)
 		local value = initial == true
 		local row = New("Frame", {
@@ -4235,7 +4883,7 @@ end
 			ZIndex = 23,
 			Parent = row,
 		})
-		New("TextLabel", {
+		local switchLabel = New("TextLabel", {
 			Size = UDim2.new(1, -44, 1, 0),
 			BackgroundTransparency = 1,
 			Text = labelText,
@@ -4276,6 +4924,10 @@ end
 			value = not value
 			render()
 			if onChange then task.spawn(onChange, value) end
+		end)
+		bindTheme(function()
+			switchLabel.TextColor3 = Theme.Text
+			render()
 		end)
 		return {
 			Refresh = function(v)
@@ -4417,17 +5069,17 @@ end
 				closeUnloadModals()
 			end)
 	end
-	wmToggleObj = panelSwitch("Watermark", 12, wmEnabled, function(v)
+	wmToggleObj = panelSwitch("Watermark", 14, wmEnabled, function(v)
 		SetWatermark(v)
 	end)
-	kbToggleObj = panelSwitch("Keybind List", 13, kbEnabled, function(v)
+	kbToggleObj = panelSwitch("Keybind List", 15, kbEnabled, function(v)
 		SetKeybindList(v)
 	end)
-	siToggleObj = panelSwitch("Session Info", 14, siEnabled, function(v)
+	siToggleObj = panelSwitch("Session Info", 16, siEnabled, function(v)
 		SetSessionInfo(v)
 	end)
-	panelLabel("UI Reopen Mode", 15)
-	reopenModeDd = BuildDropdown(panelScroll, 16, {
+	panelLabel("UI Reopen Mode", 19)
+	reopenModeDd = BuildDropdown(panelScroll, 20, {
 		Name = "Mode",
 		Options = { "Floating", "Keybind" },
 		Default = uiReopenMode,
@@ -4435,7 +5087,7 @@ end
 			if setReopenMode then setReopenMode(v) end
 		end,
 	})
-	BuildButton(panelScroll, 17, {
+	BuildButton(panelScroll, 21, {
 		Name = "Unload",
 		Callback = function()
 			showUnloadConfirm()
@@ -4452,6 +5104,7 @@ end
 			GUIKeybind = toggleKey and toggleKey.Name or nil,
 			NotificationLocation = notifyLocation,
 			UIReopenMode = uiReopenMode,
+			Theme = themeName,
 			FloatingButton = { Position = packUDim2((floatingBtn and floatingBtn.Parent and floatingBtn.Position or nil) or savedFloatingPos) },
 		}
 		local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
@@ -4480,6 +5133,10 @@ end
 		end
 		if G.UIReopenMode == "Floating" or G.UIReopenMode == "Keybind" then
 			uiReopenMode = G.UIReopenMode
+		end
+		if G.Theme and THEMES[G.Theme] then
+			applyThemeTokens(G.Theme)
+			if themeDdObj then themeDdObj:SetSilent(G.Theme) end
 		end
 		if G.NotificationLocation then
 			SetNotifyLocation(G.NotificationLocation)
@@ -4571,6 +5228,8 @@ end
 	function Window:Destroy()
 		if destroyed then return end
 		destroyed = true
+		themeAppliers[themeApplierSlot] = nil
+		table.clear(themeRefs)
 		saveGlobalsNow()
 		kbEnabled = false
 		wmEnabled = false

@@ -18,9 +18,12 @@ local Window = Library:CreateWindow({
 	Title = "Norepine",
 	Size = UDim2.fromOffset(700, 460),
 })
-local tab = Window:AddTab({ Name = "Combat", Icon = "sword" })
-local sec = tab:AddSection({ Name = "Movement" })
-local modeDd = sec:AddDropdown({
+
+-- Combat tab with category separators
+local combat = Window:AddTab({ Name = "Combat", Icon = "sword" })
+combat:AddCategory("Main")
+local movSec = combat:AddSection({ Name = "Movement" })
+local modeDd = movSec:AddDropdown({
 	Name = "Mode",
 	Options = { "Fast", "Slow", "Medium" },
 	Default = "Fast",
@@ -28,8 +31,24 @@ local modeDd = sec:AddDropdown({
 		print("[NorepineTest] Mode -> " .. tostring(v))
 	end,
 })
-sec:AddToggle({ Name = "Fly Speed", Default = false, NotifyOnToggle = true })
-sec:AddKeybind({ Name = "Manual Rebind", Default = Enum.KeyCode.B })
+movSec:AddToggle({ Name = "Fly Speed", Default = false, NotifyOnToggle = true })
+movSec:AddKeybind({ Name = "Manual Rebind", Default = Enum.KeyCode.B })
+combat:AddCategory("Detections")
+combat:AddSection({ Name = "Staff Detection" })
+combat:AddCategory("Misc")
+combat:AddSection({ Name = "Extra" })
+
+local visuals = Window:AddTab({ Name = "Visuals", Icon = "eye" })
+visuals:AddCategory("Main")
+local espSec = visuals:AddSection({ Name = "ESP" })
+espSec:AddColorPick({ Name = "Box Color", Default = Color3.fromRGB(255, 255, 255) })
+espSec:AddSlider({ Name = "Opacity", Min = 0, Max = 100, Default = 80 })
+visuals:AddSection({ Name = "Chams" })
+
+local exclusive = Window:AddTab({ Name = "Exclusive", Icon = "crown" })
+exclusive:AddCategory("Main")
+exclusive:AddSection({ Name = "Identity Hider" })
+
 -- Pre-bind the Slow option to X so the keybind list has an example entry
 local slowEntry = modeDd.OptionEntry and modeDd:OptionEntry("Slow")
 if slowEntry and slowEntry.Bind then
@@ -37,7 +56,9 @@ if slowEntry and slowEntry.Bind then
 	print("[NorepineTest] Slow bound to X")
 end
 Window:SetWatermark(true)
+Window:SetSessionInfo(true)
 Window:SetKeybindList(true)
 Window:Show()
 Window:Notify({ Title = "Norepine", Text = "Test UI loaded", Icon = "check" })
-print("[NorepineTest] loaded")
+print("[NorepineTest] loaded; theme = " .. tostring(Library:GetTheme()))
+print("[NorepineTest] themes = " .. table.concat(Library:GetThemeNames(), ", "))

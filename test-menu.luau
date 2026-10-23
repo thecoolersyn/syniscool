@@ -1,4 +1,3 @@
--- NorepineUI test harness: loads src.lua as a library and builds a demo menu
 local SRC_PATH = "NorephineUI/src.lua"
 local raw = readfile(SRC_PATH)
 local fn, cerr = loadstring(raw, "NorepineUI")
@@ -19,7 +18,6 @@ local Window = Library:CreateWindow({
 	Size = UDim2.fromOffset(700, 460),
 })
 
--- Combat section: separators appear in the SIDEBAR between tab groups
 local cMain = Window:AddTab({ Name = "Main", Icon = "sword", Section = "Combat" })
 local movSec = cMain:AddSection({ Name = "Movement" })
 local modeDd = movSec:AddDropdown({
@@ -43,7 +41,6 @@ Window:AddTab({ Name = "Main", Icon = "camera", Section = "Visuals" })
 Window:AddTab({ Name = "Main", Icon = "skull", Section = "Exclusive" })
 	:AddSection({ Name = "Identity Hider" })
 
--- Pre-bind the Slow option to X so the keybind list has an example entry
 local slowEntry = modeDd.OptionEntry and modeDd:OptionEntry("Slow")
 if slowEntry and slowEntry.Bind then
 	slowEntry:Bind(Enum.KeyCode.X)

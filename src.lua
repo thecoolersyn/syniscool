@@ -4,7 +4,7 @@ local RunService        = game:GetService("RunService")
 local Players           = game:GetService("Players")
 local HttpService       = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
-local Theme = {} -- active theme tokens (mutated in place so component readers always see current colors)
+local Theme = {}
 local DEFAULT_THEME = "Default"
 local THEME_ORDER = {
 	"Default", "Cobalt", "Night", "Wave", "Vapor", "Frost",
@@ -398,8 +398,6 @@ local LucideIcons = {
     ["camera"]           = "rbxassetid://10709789686",
 	["sword"]			 = "rbxassetid://10734975486",
 }
--- Designated icons: keyword -> Lucide icon, used to auto-icon tabs whose name
--- or section matches (used when AddTab is called without an Icon).
 local DESIGNATED_ICONS = {
 	["combat"]     = "swords",
 	["battle"]     = "swords",
@@ -959,14 +957,27 @@ function Library:CreateWindow(opts)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
+	local SIDEBAR_W = 176
+	local SidebarRail = New("Frame", {
+		Name = "SidebarRail",
+		Position = UDim2.new(0, 0, 0, HEADER_H),
+		Size = UDim2.new(0, SIDEBAR_W, 1, -HEADER_H),
+		BackgroundColor3 = Theme.Group,
+		BackgroundTransparency = 0.5,
+		BorderSizePixel = 0,
+		Parent = Main,
+	})
+	bindTheme(function()
+		SidebarRail.BackgroundColor3 = Theme.Group
+	end)
 	local Sidebar = New("Frame", {
 		Name = "Sidebar",
 		Position = UDim2.new(0, 0, 0, HEADER_H),
-		Size = UDim2.new(0, 160, 1, -HEADER_H),
+		Size = UDim2.new(0, SIDEBAR_W, 1, -HEADER_H),
 		BackgroundTransparency = 1,
 		Parent = Main,
 	})
-	Pad(Sidebar, 10, 10, 10, 10)
+	Pad(Sidebar, 10, 10, 6, 10)
 	local tabScroller = New("ScrollingFrame", {
 		Name = "Tabs",
 		Size = UDim2.new(1, 0, 1, -46),
@@ -984,14 +995,14 @@ function Library:CreateWindow(opts)
 		tabScroller.ScrollBarImageColor3 = Theme.Scrollbar
 	end)
 	New("UIListLayout", {
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = tabScroller,
 	})
 	local Content = New("Frame", {
 		Name = "Content",
-		Position = UDim2.new(0, 161, 0, HEADER_H),
-		Size = UDim2.new(1, -161, 1, -HEADER_H),
+		Position = UDim2.new(0, SIDEBAR_W + 18, 0, HEADER_H),
+		Size = UDim2.new(1, -(SIDEBAR_W + 36), 1, -HEADER_H),
 		BackgroundTransparency = 1,
 		Parent = Main,
 	})
@@ -1418,16 +1429,17 @@ end
 	local SidebarFX = New("Frame", {
 		Name = "SidebarFX",
 		Position = UDim2.new(0, 0, 0, HEADER_H),
-		Size = UDim2.new(0, 160, 1, -HEADER_H),
+		Size = UDim2.new(0, SIDEBAR_W, 1, -HEADER_H),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = Main,
 	})
 	local Indicator = New("Frame", {
 		Name = "TabIndicator",
-		Size = UDim2.new(0, 3, 0, 16),
-		Position = UDim2.new(0, 13, 0, 0),
-		BackgroundColor3 = Theme.Text,
+		AnchorPoint = Vector2.new(0, 0.5),
+		Size = UDim2.new(0, 3, 0, 18),
+		Position = UDim2.new(0, 4, 0, 0),
+		BackgroundColor3 = Theme.TitleGradient[1],
 		BorderSizePixel = 0,
 		Visible = false,
 		ZIndex = 5,
@@ -1435,7 +1447,7 @@ end
 	})
 	Corner(Indicator, 2)
 	bindTheme(function()
-		Indicator.BackgroundColor3 = Theme.Text
+		Indicator.BackgroundColor3 = Theme.TitleGradient[1]
 	end)
 	do
 		local ProfileBar = New("Frame", {
@@ -1539,16 +1551,16 @@ end
 	local NotifyHolder = New("Frame", {
 		Name = "Notifications",
 		BackgroundTransparency = 1,
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -16, 1, -16),
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0, 16, 0, 16),
 		Size = UDim2.new(0, 262, 1, -32),
 		Parent = Gui,
 	})
 	local NotifyLayout = New("UIListLayout", {
 		Padding = UDim.new(0, 8),
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Top,
+		HorizontalAlignment = Enum.HorizontalAlignment.Left,
 		Parent = NotifyHolder,
 	})
 	local Window = {}
@@ -1563,7 +1575,6 @@ end
 	local uiVisible = false
 	local indicatorConn = nil
 	local destroyed = false
-	-- Compact/mobile scaling: shrink the entire window on small viewports or touch-only devices
 	local mobileScale = 1
 	local lastViewportCam = nil
 	local viewportConn = nil
@@ -1634,7 +1645,7 @@ end
 	end)
 	local smoothSliders = {}
 	local SMOOTH_SPEED = 12
-	local notifyLocation = opts.NotifyLocation or "Corner Right"
+	local notifyLocation = opts.NotifyLocation or "Top Left"
 	local notifyDirection = 24
 	local uiReopenMode = "Floating"
 	local savedFloatingPos = nil
@@ -1890,7 +1901,7 @@ end
 		for _, loc in ipairs(NOTIFY_LOCATIONS) do
 			if loc == name then known = true break end
 		end
-		if not known then name = "Corner Right" end
+		if not known then name = "Top Left" end
 		notifyLocation = name
 		local right = name:match("Right") ~= nil
 		notifyDirection = right and 24 or -24
@@ -3463,8 +3474,8 @@ end
 			BorderSizePixel = 0,
 			Parent = columnFrame,
 		})
-		Corner(card, 11)
-		local moduleStroke = Stroke(card, Theme.GroupStroke, 0.3)
+		Corner(card, 9)
+		local moduleStroke = Stroke(card, Theme.GroupStroke, 0.55)
 		New("UIListLayout", {
 			Padding = UDim.new(0, 0),
 			SortOrder = Enum.SortOrder.LayoutOrder,
@@ -3955,12 +3966,12 @@ end
 		local function place(inst)
 			if not btn.Parent then return end
 			local y = btn.AbsolutePosition.Y - Sidebar.AbsolutePosition.Y
-				+ (btn.AbsoluteSize.Y - 16) / 2
+				+ btn.AbsoluteSize.Y / 2
 			Indicator.Visible = true
 			if inst then
-				Indicator.Position = UDim2.new(0, 13, 0, y)
+				Indicator.Position = UDim2.new(0, 4, 0, y)
 			else
-				Tween(Indicator, TWEEN_MED, { Position = UDim2.new(0, 13, 0, y) })
+				Tween(Indicator, TWEEN_MED, { Position = UDim2.new(0, 4, 0, y) })
 			end
 		end
 		task.defer(place, instant)
@@ -3990,7 +4001,7 @@ end
 				t.Page.Visible = false
 			end
 			Tween(t.Button, TWEEN_FAST, {
-				BackgroundTransparency = selected and 0 or 1,
+				BackgroundTransparency = selected and 0.45 or 1,
 			})
 			t.NameLabel.TextColor3 = selected and Theme.Text or Theme.TextDim
 			if t.IconRef then
@@ -4096,7 +4107,7 @@ end
 		bindTheme(function()
 			local sel = (currentTab == Tab)
 			button.BackgroundColor3 = Theme.TabSelected
-			button.BackgroundTransparency = sel and 0 or 1
+			button.BackgroundTransparency = sel and 0.45 or 1
 			nameLabel.TextColor3 = sel and Theme.Text or Theme.TextDim
 			if iconRef:IsA("ImageLabel") then
 				iconRef.ImageColor3 = sel and Theme.Text or Theme.TextDim
@@ -4397,7 +4408,6 @@ end
 		ZIndex = 21,
 		Parent = panel,
 	})
-	-- panel + edge divider + scrollbar theming
 	local panelStrokeRef
 	for _, child in ipairs(panel:GetDescendants()) do
 		if child:IsA("UIStroke") then panelStrokeRef = child break end

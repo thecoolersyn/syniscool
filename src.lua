@@ -4014,8 +4014,12 @@ end
 				BackgroundTransparency = 1,
 				Parent = tabScroller,
 			})
+			local sepIcon = MakeIcon(sep, designatedIconFor(tabOpts.Section), 10, Theme.HeaderText)
+			sepIcon.AnchorPoint = Vector2.new(0, 0.5)
+			sepIcon.Position = UDim2.new(0, 3, 1, -4)
+			sepIcon.ZIndex = 2
 			local sepLabel = New("TextLabel", {
-				Position = UDim2.new(0, 3, 1, -8.5),
+				Position = UDim2.new(0, 17, 1, -8.5),
 				Size = UDim2.new(0, 0, 0, 9),
 				AutomaticSize = Enum.AutomaticSize.X,
 				BackgroundTransparency = 1,
@@ -4055,6 +4059,7 @@ end
 			task.defer(layoutLine)
 			bindTheme(function()
 				sepLabel.TextColor3 = Theme.HeaderText
+				sepIcon.ImageColor3 = Theme.HeaderText
 				sepLine.BackgroundColor3 = Theme.Divider
 			end)
 			sidebarOrder += 1

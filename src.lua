@@ -1153,27 +1153,44 @@ local function ColorPreview(parent, order, o)
 		Size = UDim2.new(0, POPUP_W - 20, 0, SPECTRUM_H),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		AutoButtonColor = false,
+		Text = "",
 		BorderSizePixel = 0,
 		ZIndex = 41,
 		Parent = popup,
 	})
 	Corner(spectrum, 5)
-	New("UIGradient", {
-		Rotation = 90,
-		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(0, 0, 0)),
-		Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 1),
-			NumberSequenceKeypoint.new(1, 0),
-		}),
+	local satLayer = New("Frame", {
+		Name = "Sat",
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3 = HueToColor(hsvH),
+		BorderSizePixel = 0,
+		ZIndex = 41,
 		Parent = spectrum,
 	})
-	local satGrad = New("UIGradient", {
+	New("UIGradient", {
 		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255)),
 		Transparency = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0),
 			NumberSequenceKeypoint.new(1, 1),
 		}),
+		Parent = satLayer,
+	})
+	local valLayer = New("Frame", {
+		Name = "Val",
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BorderSizePixel = 0,
+		ZIndex = 41,
 		Parent = spectrum,
+	})
+	New("UIGradient", {
+		Rotation = 90,
+		Color = ColorSequence.new(Color3.fromRGB(0, 0, 0), Color3.fromRGB(0, 0, 0)),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		}),
+		Parent = valLayer,
 	})
 	local specDot = New("Frame", {
 		Name = "Dot",
@@ -1192,6 +1209,7 @@ local function ColorPreview(parent, order, o)
 		Size = UDim2.new(0, POPUP_W - 20, 0, BAR_H),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		AutoButtonColor = false,
+		Text = "",
 		BorderSizePixel = 0,
 		ZIndex = 41,
 		Parent = popup,
@@ -1241,7 +1259,7 @@ local function ColorPreview(parent, order, o)
 	local function refresh()
 		swatchFill.BackgroundColor3 = value
 		preview.BackgroundColor3 = value
-		satGrad.Color = ColorSequence.new(HueToColor(hsvH), HueToColor(hsvH))
+		spectrum.BackgroundColor3 = HueToColor(hsvH)
 		specDot.Position = UDim2.new(hsvS, 0, 1 - hsvV, 0)
 		specDot.BackgroundColor3 = value
 		hueKnob.Position = UDim2.new(hsvH, 0, 0.5, 0)

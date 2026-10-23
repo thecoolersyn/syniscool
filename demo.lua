@@ -1,37 +1,37 @@
-local Hyperion
+local Norepine
 
 local REMOTE_URL = "https://raw.githubusercontent.com/thecoolersyn/syniscool/refs/heads/main/src.lua"
 
 local function loadLibrary()
 	if not (game and game.HttpGet) then
-		error("[Hyperion] game.HttpGet is unavailable - the library is loaded from the remote URL only")
+		error("[Norepine] game.HttpGet is unavailable - the library is loaded from the remote URL only")
 	end
 	local ok, content = pcall(game.HttpGet, game, REMOTE_URL)
 	if not ok or type(content) ~= "string" or #content == 0 then
-		error(("[Hyperion] failed to fetch library from %s: %s"):format(REMOTE_URL, tostring(content)))
+		error(("[Norepine] failed to fetch library from %s: %s"):format(REMOTE_URL, tostring(content)))
 	end
-	local fn, err = loadstring(content, "hyperion:remote")
+	local fn, err = loadstring(content, "norepine:remote")
 	if not fn then
-		error(("[Hyperion] remote library did not compile: %s"):format(tostring(err)))
+		error(("[Norepine] remote library did not compile: %s"):format(tostring(err)))
 	end
 	local ok2, result = pcall(fn)
 	if not ok2 or type(result) ~= "table" then
-		error(("[Hyperion] remote library chunk returned invalid result: %s"):format(tostring(result)))
+		error(("[Norepine] remote library chunk returned invalid result: %s"):format(tostring(result)))
 	end
-	print("[Hyperion] library loaded from remote URL")
+	print("[Norepine] library loaded from remote URL")
 	return result
 end
 
-Hyperion = loadLibrary()
+Norepine = loadLibrary()
 
-local Window = Hyperion:CreateWindow({
-	Title = "Hyperion",
+local Window = Norepine:CreateWindow({
+	Title = "Norepine",
 	ToggleKey = "LeftControl",
 })
 
 local function demo(name)
 	return function(value)
-		print(("[Hyperion] %s → %s"):format(name, tostring(value)))
+		print(("[Norepine] %s → %s"):format(name, tostring(value)))
 	end
 end
 
@@ -47,7 +47,7 @@ local KillAura = Blatant:AddModule({
 	Keybind = "K",
 	NotifyOnToggle = true,
 	Callback = function(state)
-		print("[Hyperion] Kill Aura " .. (state and "ON" or "OFF"))
+		print("[Norepine] Kill Aura " .. (state and "ON" or "OFF"))
 	end,
 })
 KillAura:AddSlider({
@@ -167,13 +167,13 @@ local ServerUtils = Misc:AddModule({
 ServerUtils:AddButton({
 	Name = "Rejoin Server",
 	Callback = function()
-		print("[Hyperion] Rejoin Server")
+		print("[Norepine] Rejoin Server")
 	end,
 })
 ServerUtils:AddButton({
 	Name = "Server Hop",
 	Callback = function()
-		print("[Hyperion] Server Hop")
+		print("[Norepine] Server Hop")
 	end,
 })
 
@@ -211,9 +211,9 @@ ConfigGroup:AddButton({
 	Name = "Save Config",
 	Callback = function()
 		if Window:SaveConfig() then
-			print("[Hyperion] Config saved")
+			print("[Norepine] Config saved")
 		else
-			print("[Hyperion] Config not saved - create one from the gear panel first")
+			print("[Norepine] Config not saved - create one from the gear panel first")
 		end
 	end,
 })
@@ -221,7 +221,7 @@ ConfigGroup:AddButton({
 	Name = "Load Config",
 	Callback = function()
 		if Window:LoadConfig() then
-			print("[Hyperion] Config loaded")
+			print("[Norepine] Config loaded")
 		end
 	end,
 })
@@ -236,13 +236,13 @@ Scripting:AddLabel({
 Scripting:AddButton({
 	Name = "Execute Snippet",
 	Callback = function()
-		print("[Hyperion] Snippet executed")
+		print("[Norepine] Snippet executed")
 	end,
 })
 
 task.delay(0.5, function()
 	Window:Notify({
-		Title = "Hyperion",
+		Title = "Norepine",
 		Text = "UI loaded. Press LeftControl to minimize.",
 		Duration = 4,
 	})
@@ -251,8 +251,8 @@ end)
 if getgenv then
 	local ok, g = pcall(getgenv)
 	if ok and type(g) == "table" then
-		g.HyperionUI = Window
-		g.HyperionModules = Window:Modules()
+		g.NorepineUI = Window
+		g.NorepineModules = Window:Modules()
 	end
 end
 

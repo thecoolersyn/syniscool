@@ -2048,6 +2048,23 @@ end
 	local TextService = game:GetService("TextService")
 	local kbEnabled = false
 	local wmEnabled = false
+	local wmFpsFrames = 0
+	local wmFpsElapsed = 0
+	local wmFpsValue = 0
+	local wmFpsHooked = false
+	local function hookWmFpsSampler()
+		if wmFpsHooked then return end
+		wmFpsHooked = true
+		Connect(RunService.RenderStepped, function(dt)
+			wmFpsFrames += 1
+			wmFpsElapsed += dt
+			if wmFpsElapsed >= 0.4 then
+				wmFpsValue = wmFpsFrames / wmFpsElapsed
+				wmFpsFrames = 0
+				wmFpsElapsed = 0
+			end
+		end)
+	end
 	local kbToggleObj = nil
 	local wmToggleObj = nil
 	local keybindListInvalidate = nil
@@ -2487,6 +2504,7 @@ end
 		wmEnabled = v
 		if v then
 			ensureWatermark()
+			hookWmFpsSampler()
 			if not wmDragged then
 				wmFrame.AnchorPoint = Vector2.new(0, 0)
 				wmFrame.Position = savedWmPos or UDim2.fromOffset(16, 16)
@@ -2497,8 +2515,8 @@ end
 			task.spawn(function()
 				while wmEnabled and not destroyed and my == wmToken do
 					if wmFrame and wmFrame.Parent and wmFrame.Visible then
-						local ok, fps = pcall(function() return workspace:GetRealPhysicsFPS() end)
-						if ok and type(fps) == "number" and fps == fps then
+						local fps = wmFpsValue
+						if fps > 0 then
 							wmFpsLabel.Text = math.floor(fps + 0.5) .. "FPS"
 						end
 						wmPingLabel.Text = wmPingMs() .. "MS"

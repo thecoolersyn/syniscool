@@ -30,6 +30,13 @@ local modeDd = movSec:AddDropdown({
 })
 movSec:AddToggle({ Name = "Fly Speed", Default = false, NotifyOnToggle = true })
 movSec:AddKeybind({ Name = "Manual Rebind", Default = Enum.KeyCode.B })
+movSec:AddColorPick({
+	Name = "Aura Color",
+	Default = Color3.fromRGB(120, 90, 255),
+	Callback = function(c)
+		print("[NorepineTest] Aura Color -> " .. tostring(c))
+	end,
+})
 
 Window:AddTab({ Name = "Detections", Section = "Combat" })
 	:AddSection({ Name = "Staff Detection" })

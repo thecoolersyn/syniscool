@@ -3967,21 +3967,11 @@ end
 				BackgroundTransparency = 1,
 				Parent = tabScroller,
 			})
-			local sepLine = New("Frame", {
-				AnchorPoint = Vector2.new(0, 0.5),
-				Position = UDim2.new(0, 2, 1, -4),
-				Size = UDim2.new(1, -4, 0, 1),
-				BackgroundColor3 = Theme.Divider,
-				BorderSizePixel = 0,
-				ZIndex = 1,
-				Parent = sep,
-			})
 			local sepLabel = New("TextLabel", {
 				Position = UDim2.new(0, 3, 1, -8.5),
 				Size = UDim2.new(0, 0, 0, 9),
 				AutomaticSize = Enum.AutomaticSize.X,
-				BackgroundColor3 = Theme.Background,
-				BackgroundTransparency = 0,
+				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
 				Text = string.upper(tabOpts.Section),
 				Font = Enum.Font.GothamBold,
@@ -3991,9 +3981,33 @@ end
 				ZIndex = 2,
 				Parent = sep,
 			})
+			local sepLine = New("Frame", {
+				Position = UDim2.new(0, 3, 1, -4),
+				Size = UDim2.new(1, -5, 0, 1),
+				BackgroundColor3 = Theme.Divider,
+				BorderSizePixel = 0,
+				ZIndex = 1,
+				Parent = sep,
+			})
+			local function layoutLine()
+				local textEnd = sepLabel.AbsolutePosition.X + sepLabel.AbsoluteSize.X
+				local lineStart = textEnd + 6
+				local relStart = lineStart - sep.AbsolutePosition.X
+				local relEnd = sep.AbsoluteSize.X - 2
+				if relEnd <= relStart then
+					sepLine.Visible = false
+					return
+				end
+				sepLine.Visible = true
+				sepLine.Position = UDim2.new(0, relStart, 0, sepLabel.Position.Y.Offset + 4)
+				sepLine.Size = UDim2.new(0, relEnd - relStart, 0, 1)
+			end
+			Connect(sepLabel:GetPropertyChangedSignal("AbsoluteSize"), layoutLine)
+			Connect(sep:GetPropertyChangedSignal("AbsolutePosition"), layoutLine)
+			Connect(sep:GetPropertyChangedSignal("AbsoluteSize"), layoutLine)
+			task.defer(layoutLine)
 			bindTheme(function()
 				sepLabel.TextColor3 = Theme.HeaderText
-				sepLabel.BackgroundColor3 = Theme.Background
 				sepLine.BackgroundColor3 = Theme.Divider
 			end)
 			sidebarOrder += 1

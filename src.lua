@@ -1084,6 +1084,17 @@ local function ColorPreview(parent, order, o)
 		value = Color3.fromRGB(255, 255, 255)
 	end
 	local hsvH, hsvS, hsvV = value:ToHSV()
+	local pageScroller
+	do
+		local p = parent
+		while p and p ~= Main do
+			if p:IsA("ScrollingFrame") then
+				pageScroller = p
+				break
+			end
+			p = p.Parent
+		end
+	end
 	local row = New("Frame", {
 		Name = "Color_" .. tostring(o.Name or "Colors"),
 		LayoutOrder = order,
@@ -1195,7 +1206,7 @@ local function ColorPreview(parent, order, o)
 	local specDot = New("Frame", {
 		Name = "Dot",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Size = UDim2.fromOffset(10, 10),
+		Size = UDim2.fromOffset(12, 12),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BorderSizePixel = 0,
 		ZIndex = 43,
@@ -1261,7 +1272,6 @@ local function ColorPreview(parent, order, o)
 		preview.BackgroundColor3 = value
 		spectrum.BackgroundColor3 = HueToColor(hsvH)
 		specDot.Position = UDim2.new(hsvS, 0, 1 - hsvV, 0)
-		specDot.BackgroundColor3 = value
 		hueKnob.Position = UDim2.new(hsvH, 0, 0.5, 0)
 		hueKnob.BackgroundColor3 = HueToColor(hsvH)
 		valueLabel.Text = ("R%d G%d B%d"):format(
@@ -1341,6 +1351,7 @@ local function ColorPreview(parent, order, o)
 		elseif openColorPicker == self then
 			openColorPicker = nil
 		end
+		if pageScroller then pageScroller.ScrollingEnabled = not v end
 		popup.Visible = v
 		guard.Visible = v
 	end

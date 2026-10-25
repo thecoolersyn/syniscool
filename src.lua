@@ -791,7 +791,7 @@ end
 	end
 
 	local LOGO_FILE = "Norepine/Assets/Icon.png"
-	local LOGO_BUNDLED = "NorephineUI/Assets/Icon.png"
+	local LOGO_BUNDLED = "Norepine/Assets/Icon.png"
 	local LOGO_REMOTE = "https://raw.githubusercontent.com/thecoolersyn/syniscool/main/Assets/Icon.png"
 	local resolvedLogoUrl = nil
 	local resolvedLogoTried = false

@@ -1,4 +1,4 @@
-local SRC_PATH = "NorephineUI/src.lua"
+local SRC_PATH = "Norepine/src.lua"
 local raw = readfile(SRC_PATH)
 local fn, cerr = loadstring(raw, "NorepineUI")
 if not fn then

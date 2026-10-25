@@ -799,8 +799,8 @@ end
 		return pcall(writefile, GLOBALS_FILE, json)
 	end
 
-	local LOGO_FILE = "NorephineUI/Assets/Icon.png"
-	local LOGO_CACHE = NOREPINE_ROOT .. "/assets/Icon.png"
+	local LOGO_FILE = "Norepine/Assets/Icon.png"
+	local LOGO_BUNDLED = "NorephineUI/Assets/Icon.png"
 	local LOGO_REMOTE = "https://raw.githubusercontent.com/thecoolersyn/syniscool/main/Assets/Icon.png"
 	local resolvedLogoUrl = nil
 	local resolvedLogoTried = false
@@ -811,6 +811,10 @@ end
 			print("[Norepine] logo not loaded: getcustomasset is unavailable in this runtime")
 			return nil
 		end
+		local function fileExists(path)
+			local ok, data = pcall(readfile, path)
+			return ok and type(data) == "string" and #data > 0
+		end
 		local function fromFile(path)
 			local ok, url = pcall(getcustomasset, path)
 			if ok and type(url) == "string" and #url > 0 then
@@ -818,25 +822,27 @@ end
 			end
 			return nil
 		end
-		resolvedLogoUrl = fromFile(LOGO_FILE)
-		if not resolvedLogoUrl and CanWriteFiles() then
+		if not fileExists(LOGO_FILE) and CanWriteFiles() then
 			pcall(function()
-				makefolder(NOREPINE_ROOT .. "/assets")
+				makefolder(NOREPINE_ROOT)
+				makefolder(NOREPINE_ROOT .. "/Assets")
 			end)
-			local have = false
-			pcall(function()
-				have = #readfile(LOGO_CACHE) > 0
-			end)
-			if not have then
+			local filled = false
+			if fileExists(LOGO_BUNDLED) then
+				filled = pcall(function()
+					writefile(LOGO_FILE, readfile(LOGO_BUNDLED))
+				end)
+			end
+			if not filled then
 				local okDl = pcall(function()
-					writefile(LOGO_CACHE, game:HttpGet(LOGO_REMOTE))
+					writefile(LOGO_FILE, game:HttpGet(LOGO_REMOTE))
 				end)
 				if not okDl then
 					print("[Norepine] logo download failed: " .. LOGO_REMOTE)
 				end
 			end
-			resolvedLogoUrl = fromFile(LOGO_CACHE)
 		end
+		resolvedLogoUrl = fromFile(LOGO_FILE)
 		if not resolvedLogoUrl then
 			print("[Norepine] logo asset not found at " .. LOGO_FILE)
 		end

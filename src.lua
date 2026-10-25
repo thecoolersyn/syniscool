@@ -675,17 +675,6 @@ local AssetDir  = GameRoot .. "/assets"
 local ConfigDir = GameRoot .. "/configs"
 local SelectedFile = ConfigDir .. "/Selected.txt"
 
-if type(print) == "function" then
-	print("Game Metadata")
-	print("  Family:      " .. tostring(GameId))
-	print("  Game Name:   " .. tostring(PlaceName))
-	print("  PlaceId:     " .. tostring(GameMeta.PlaceId))
-	print("  GameId:      " .. tostring(GameMeta.GameId))
-	print("  CreatorName: " .. tostring(GameMeta.CreatorName))
-	print("  CreatorId:   " .. tostring(GameMeta.CreatorId))
-	print("  CreatorType: " .. tostring(GameMeta.CreatorType))
-end
-
 local function CanWriteFiles()
 	return type(writefile) == "function" and type(readfile) == "function"
 end
@@ -810,7 +799,6 @@ end
 		if resolvedLogoTried then return resolvedLogoUrl end
 		resolvedLogoTried = true
 		if type(getcustomasset) ~= "function" then
-			print("[Norepine] logo not loaded: getcustomasset is unavailable in this runtime")
 			return nil
 		end
 		local function fileExists(path)
@@ -850,15 +838,9 @@ end
 				local okDl = pcall(function()
 					writefile(LOGO_FILE, game:HttpGet(LOGO_REMOTE))
 				end)
-				if not okDl then
-					print("[Norepine] logo download failed: " .. LOGO_REMOTE)
-				end
 			end
 		end
 		resolvedLogoUrl = fromFile(LOGO_FILE)
-		if not resolvedLogoUrl then
-			print("[Norepine] logo asset not found at " .. LOGO_FILE)
-		end
 		return resolvedLogoUrl
 	end
 

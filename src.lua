@@ -799,15 +799,18 @@ end
 		return pcall(writefile, GLOBALS_FILE, json)
 	end
 
-	local LOGO_FILE = "NorephineUI/assets/norepine-logo.jpg"
-	local LOGO_CACHE = NOREPINE_ROOT .. "/assets/norepine-logo.jpg"
-	local LOGO_REMOTE = "https://raw.githubusercontent.com/thecoolersyn/syniscool/main/assets/norepine-logo.jpg"
+	local LOGO_FILE = "NorephineUI/Assets/Icon.png"
+	local LOGO_CACHE = NOREPINE_ROOT .. "/assets/Icon.png"
+	local LOGO_REMOTE = "https://raw.githubusercontent.com/thecoolersyn/syniscool/main/Assets/Icon.png"
 	local resolvedLogoUrl = nil
 	local resolvedLogoTried = false
 	local function ResolveLogoUrl()
 		if resolvedLogoTried then return resolvedLogoUrl end
 		resolvedLogoTried = true
-		if type(getcustomasset) ~= "function" then return nil end
+		if type(getcustomasset) ~= "function" then
+			print("[Norepine] logo not loaded: getcustomasset is unavailable in this runtime")
+			return nil
+		end
 		local function fromFile(path)
 			local ok, url = pcall(getcustomasset, path)
 			if ok and type(url) == "string" and #url > 0 then
@@ -825,11 +828,17 @@ end
 				have = #readfile(LOGO_CACHE) > 0
 			end)
 			if not have then
-				pcall(function()
+				local okDl = pcall(function()
 					writefile(LOGO_CACHE, game:HttpGet(LOGO_REMOTE))
 				end)
+				if not okDl then
+					print("[Norepine] logo download failed: " .. LOGO_REMOTE)
+				end
 			end
 			resolvedLogoUrl = fromFile(LOGO_CACHE)
+		end
+		if not resolvedLogoUrl then
+			print("[Norepine] logo asset not found at " .. LOGO_FILE)
 		end
 		return resolvedLogoUrl
 	end

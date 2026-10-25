@@ -1114,31 +1114,10 @@ function Library:CreateWindow(opts)
 		ZIndex = 6,
 		Parent = Main,
 	})
-	local headerTitleX = 16
-	if logoUrl then
-		local headerLogo = New("ImageLabel", {
-			Name = "HeaderLogo",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 14, 0.5, 0),
-			Size = UDim2.fromOffset(22, 22),
-			BackgroundTransparency = 1,
-			Image = logoUrl,
-			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 7,
-			Parent = Header,
-		})
-		Corner(headerLogo, 5)
-		Stroke(headerLogo, Theme.GroupStroke, 0.45)
-		bindTheme(function()
-			local s = headerLogo:FindFirstChildOfClass("UIStroke")
-			if s then s.Color = Theme.GroupStroke end
-		end)
-		headerTitleX = 46
-	end
 	local titleLabel = New("TextLabel", {
 		Name = "Title",
-		Position = UDim2.new(0, headerTitleX, 0, 0),
-		Size = UDim2.new(1, -(headerTitleX + 88), 1, 0),
+		Position = UDim2.new(0, 16, 0, 0),
+		Size = UDim2.new(1, -104, 1, 0),
 		BackgroundTransparency = 1,
 		Text = title,
 		Font = Enum.Font.GothamBold,

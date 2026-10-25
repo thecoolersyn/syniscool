@@ -815,6 +815,11 @@ end
 			local ok, data = pcall(readfile, path)
 			return ok and type(data) == "string" and #data > 0
 		end
+		local function sameFile(p1, p2)
+			local ok1, d1 = pcall(readfile, p1)
+			local ok2, d2 = pcall(readfile, p2)
+			return ok1 and ok2 and d1 == d2
+		end
 		local function fromFile(path)
 			local ok, url = pcall(getcustomasset, path)
 			if ok and type(url) == "string" and #url > 0 then
@@ -822,18 +827,24 @@ end
 			end
 			return nil
 		end
-		if not fileExists(LOGO_FILE) and CanWriteFiles() then
-			pcall(function()
-				makefolder(NOREPINE_ROOT)
-				makefolder(NOREPINE_ROOT .. "/Assets")
-			end)
-			local filled = false
-			if fileExists(LOGO_BUNDLED) then
-				filled = pcall(function()
+		if CanWriteFiles() then
+			local have = fileExists(LOGO_FILE)
+			local bundled = fileExists(LOGO_BUNDLED)
+			if bundled and not (have and sameFile(LOGO_FILE, LOGO_BUNDLED)) then
+				-- refresh the runtime copy from the bundled asset (upgrades)
+				pcall(function()
+					makefolder(NOREPINE_ROOT)
+					makefolder(NOREPINE_ROOT .. "/Assets")
 					writefile(LOGO_FILE, readfile(LOGO_BUNDLED))
 				end)
+				have = true
 			end
-			if not filled then
+			if not have then
+				-- first run without a bundled copy: download once and cache
+				pcall(function()
+					makefolder(NOREPINE_ROOT)
+					makefolder(NOREPINE_ROOT .. "/Assets")
+				end)
 				local okDl = pcall(function()
 					writefile(LOGO_FILE, game:HttpGet(LOGO_REMOTE))
 				end)
@@ -1056,7 +1067,6 @@ function Library:CreateWindow(opts)
 				ScaleType = Enum.ScaleType.Fit,
 				Parent = Dock,
 			})
-			Corner(logoIcon, 8)
 		else
 			logoIcon = MakeIcon(Dock, opts.Logo or "bomb", 26, Theme.Text)
 			logoIcon.Name = "LogoIcon"
@@ -1075,9 +1085,7 @@ function Library:CreateWindow(opts)
 			local stroke = Dock:FindFirstChildOfClass("UIStroke")
 			if stroke then stroke.Color = Theme.GroupStroke end
 			if logoIcon:IsA("ImageLabel") then
-				if not logoUrl then
-					logoIcon.ImageColor3 = Theme.Text
-				end
+				logoIcon.ImageColor3 = logoUrl and Theme.TitleGradient[1] or Theme.Text
 			else
 				logoIcon.BackgroundColor3 = Theme.Text
 			end

@@ -37,6 +37,16 @@ movSec:AddColorPick({
 		print("[NorepineTest] Aura Color -> " .. tostring(c))
 	end,
 })
+movSec:AddButton({
+	Name = "Send Test Notification",
+	Callback = function()
+		Window:Notify({
+			Title = "Norepine",
+			Text = "This is a test notification from the Combat > Main tab.",
+			Duration = 5,
+		})
+	end,
+})
 
 Window:AddTab({ Name = "Detections", Section = "Combat" })
 	:AddSection({ Name = "Staff Detection" })
@@ -58,5 +68,6 @@ Window:SetSessionInfo(true)
 Window:SetKeybindList(true)
 Window:Show()
 Window:Notify({ Title = "Norepine", Text = "Test UI loaded", Icon = "check" })
+getgenv().NorepineTestLib = Library
 print("[NorepineTest] loaded; theme = " .. tostring(Library:GetTheme()))
 print("[NorepineTest] themes = " .. table.concat(Library:GetThemeNames(), ", "))

@@ -791,13 +791,48 @@ local function readGlobals()
 	end
 	return base, true
 end
-local function writeGlobals(data)
-	if not CanWriteFiles() or type(data) ~= "table" then return false end
-	EnsureDir()
-	local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
-	if not ok or type(json) ~= "string" then return false end
-	return pcall(writefile, GLOBALS_FILE, json)
-end
+	local function writeGlobals(data)
+		if not CanWriteFiles() or type(data) ~= "table" then return false end
+		EnsureDir()
+		local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
+		if not ok or type(json) ~= "string" then return false end
+		return pcall(writefile, GLOBALS_FILE, json)
+	end
+
+	local LOGO_FILE = "NorephineUI/assets/norepine-logo.jpg"
+	local LOGO_CACHE = NOREPINE_ROOT .. "/assets/norepine-logo.jpg"
+	local LOGO_REMOTE = "https://raw.githubusercontent.com/thecoolersyn/syniscool/main/assets/norepine-logo.jpg"
+	local resolvedLogoUrl = nil
+	local resolvedLogoTried = false
+	local function ResolveLogoUrl()
+		if resolvedLogoTried then return resolvedLogoUrl end
+		resolvedLogoTried = true
+		if type(getcustomasset) ~= "function" then return nil end
+		local function fromFile(path)
+			local ok, url = pcall(getcustomasset, path)
+			if ok and type(url) == "string" and #url > 0 then
+				return url
+			end
+			return nil
+		end
+		resolvedLogoUrl = fromFile(LOGO_FILE)
+		if not resolvedLogoUrl and CanWriteFiles() then
+			pcall(function()
+				makefolder(NOREPINE_ROOT .. "/assets")
+			end)
+			local have = false
+			pcall(function()
+				have = #readfile(LOGO_CACHE) > 0
+			end)
+			if not have then
+				pcall(function()
+					writefile(LOGO_CACHE, game:HttpGet(LOGO_REMOTE))
+				end)
+			end
+			resolvedLogoUrl = fromFile(LOGO_CACHE)
+		end
+		return resolvedLogoUrl
+	end
 
 local Library = {}
 function Library:GetGameId() return GameId end
@@ -869,6 +904,7 @@ function Library:CreateWindow(opts)
 	opts = opts or {}
 	local title = opts.Title or "Norepine"
 	local size  = opts.Size or UDim2.fromOffset(700, 460)
+	local logoUrl = ResolveLogoUrl()
 	local guiParent
 	pcall(function()
 		if gethui then guiParent = gethui() end
@@ -957,30 +993,94 @@ function Library:CreateWindow(opts)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
-	local SIDEBAR_W = 176
-	local SidebarRail = New("Frame", {
-		Name = "SidebarRail",
-		Position = UDim2.new(0, 0, 0, HEADER_H),
-		Size = UDim2.new(0, SIDEBAR_W, 1, -HEADER_H),
-		BackgroundColor3 = Theme.Group,
-		BackgroundTransparency = 0.5,
+	local DOCK = { W = 72, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }
+	local Dock = New("CanvasGroup", {
+		Name = "Dock",
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.fromOffset(DOCK.W, size.Y.Offset > 0 and size.Y.Offset or 460),
+		BackgroundColor3 = Theme.Background,
+		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
-		Parent = Main,
+		GroupTransparency = 1,
+		Visible = false,
+		Active = true,
+		ZIndex = 2,
+		Parent = Gui,
 	})
-	bindTheme(function()
-		SidebarRail.BackgroundColor3 = Theme.Group
-	end)
+	Corner(Dock, 12)
+	Stroke(Dock, Theme.GroupStroke, 0.4)
+	local dockScale = New("UIScale", { Scale = 0.96, Parent = Dock })
+	local function syncDockPosition()
+		if not (Dock and Dock.Parent) then return end
+		local mw = Main.Size.X.Offset
+		local mh = Main.Size.Y.Offset
+		if mw <= 0 or mh <= 0 then
+			mw, mh = Main.AbsoluteSize.X, Main.AbsoluteSize.Y
+		end
+		Dock.Position = UDim2.new(
+			Main.Position.X.Scale,
+			Main.Position.X.Offset - mw / 2 - DOCK.GAP - DOCK.W,
+			Main.Position.Y.Scale,
+			Main.Position.Y.Offset - mh / 2
+		)
+		Dock.Size = UDim2.fromOffset(DOCK.W, mh)
+	end
+	syncDockPosition()
+	Connect(Main:GetPropertyChangedSignal("Position"), syncDockPosition)
+	do
+		local logoIcon
+		if logoUrl then
+			logoIcon = New("ImageLabel", {
+				Name = "LogoIcon",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.5, 0, 0, DOCK.LOGO_H / 2),
+				Size = UDim2.fromOffset(36, 36),
+				BackgroundTransparency = 1,
+				Image = logoUrl,
+				ScaleType = Enum.ScaleType.Fit,
+				Parent = Dock,
+			})
+			Corner(logoIcon, 8)
+		else
+			logoIcon = MakeIcon(Dock, opts.Logo or "bomb", 26, Theme.Text)
+			logoIcon.Name = "LogoIcon"
+			logoIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+			logoIcon.Position = UDim2.new(0.5, 0, 0, DOCK.LOGO_H / 2)
+		end
+		local logoDivider = New("Frame", {
+			Name = "LogoDivider",
+			Position = UDim2.new(0, 10, 0, DOCK.LOGO_H - 1),
+			Size = UDim2.new(1, -20, 0, 1),
+			BackgroundColor3 = Theme.Divider,
+			BorderSizePixel = 0,
+			Parent = Dock,
+		})
+		bindTheme(function()
+			local stroke = Dock:FindFirstChildOfClass("UIStroke")
+			if stroke then stroke.Color = Theme.GroupStroke end
+			if logoIcon:IsA("ImageLabel") then
+				if not logoUrl then
+					logoIcon.ImageColor3 = Theme.Text
+				end
+			else
+				logoIcon.BackgroundColor3 = Theme.Text
+			end
+			logoDivider.BackgroundColor3 = Theme.Divider
+			Dock.BackgroundColor3 = Theme.Background
+		end)
+	end
 	local Sidebar = New("Frame", {
 		Name = "Sidebar",
-		Position = UDim2.new(0, 0, 0, HEADER_H),
-		Size = UDim2.new(0, SIDEBAR_W, 1, -HEADER_H),
+		Position = UDim2.new(0, 0, 0, DOCK.LOGO_H),
+		Size = UDim2.new(1, 0, 1, -(DOCK.LOGO_H + DOCK.PROFILE_H)),
 		BackgroundTransparency = 1,
-		Parent = Main,
+		Parent = Dock,
 	})
-	Pad(Sidebar, 10, 10, 6, 10)
+	Pad(Sidebar, 2, 6, 8, 8)
 	local tabScroller = New("ScrollingFrame", {
 		Name = "Tabs",
-		Size = UDim2.new(1, 0, 1, -46),
+		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(0, 0, 0, 0),
@@ -1001,8 +1101,8 @@ function Library:CreateWindow(opts)
 	})
 	local Content = New("Frame", {
 		Name = "Content",
-		Position = UDim2.new(0, SIDEBAR_W + 18, 0, HEADER_H),
-		Size = UDim2.new(1, -(SIDEBAR_W + 36), 1, -HEADER_H),
+		Position = UDim2.new(0, 18, 0, HEADER_H),
+		Size = UDim2.new(1, -36, 1, -HEADER_H),
 		BackgroundTransparency = 1,
 		Parent = Main,
 	})
@@ -1014,10 +1114,31 @@ function Library:CreateWindow(opts)
 		ZIndex = 6,
 		Parent = Main,
 	})
+	local headerTitleX = 16
+	if logoUrl then
+		local headerLogo = New("ImageLabel", {
+			Name = "HeaderLogo",
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 14, 0.5, 0),
+			Size = UDim2.fromOffset(22, 22),
+			BackgroundTransparency = 1,
+			Image = logoUrl,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 7,
+			Parent = Header,
+		})
+		Corner(headerLogo, 5)
+		Stroke(headerLogo, Theme.GroupStroke, 0.45)
+		bindTheme(function()
+			local s = headerLogo:FindFirstChildOfClass("UIStroke")
+			if s then s.Color = Theme.GroupStroke end
+		end)
+		headerTitleX = 46
+	end
 	local titleLabel = New("TextLabel", {
 		Name = "Title",
-		Position = UDim2.new(0, 16, 0, 0),
-		Size = UDim2.new(1, -104, 1, 0),
+		Position = UDim2.new(0, headerTitleX, 0, 0),
+		Size = UDim2.new(1, -(headerTitleX + 88), 1, 0),
 		BackgroundTransparency = 1,
 		Text = title,
 		Font = Enum.Font.GothamBold,
@@ -1057,12 +1178,6 @@ function Library:CreateWindow(opts)
 			gradT = (gradT + dt * 0.4) % 2
 			grad.Offset = Vector2.new(gradT - 1, 0)
 		end)
-	end
-	if opts.Logo then
-		local logo = MakeIcon(Header, opts.Logo, 20, Theme.Text)
-		logo.AnchorPoint = Vector2.new(1, 0.5)
-		logo.Position = UDim2.new(1, -84, 0.5, 0)
-		logo.ZIndex = 7
 	end
 	local headerDivider = New("Frame", {
 		Position = UDim2.new(0, 0, 0, HEADER_H),
@@ -1445,6 +1560,7 @@ end
 				uiHomePos = Main.Position
 				displayX = nil
 				if syncPanelPosition then syncPanelPosition() end
+				syncDockPosition()
 				return
 			end
 			local step = math.min(1, dt * DRAG_SMOOTH)
@@ -1453,15 +1569,16 @@ end
 			Main.Position = UDim2.new(dragScaleX, displayX, dragScaleY, displayY)
 			uiHomePos = Main.Position
 			if syncPanelPosition then syncPanelPosition() end
+			syncDockPosition()
 		end)
 	end
 	local SidebarFX = New("Frame", {
 		Name = "SidebarFX",
-		Position = UDim2.new(0, 0, 0, HEADER_H),
-		Size = UDim2.new(0, SIDEBAR_W, 1, -HEADER_H),
+		Position = UDim2.new(0, 0, 0, DOCK.LOGO_H),
+		Size = UDim2.new(1, 0, 1, -(DOCK.LOGO_H + DOCK.PROFILE_H)),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
-		Parent = Main,
+		Parent = Dock,
 	})
 	local Indicator = New("Frame", {
 		Name = "TabIndicator",
@@ -1481,22 +1598,17 @@ end
 	do
 		local ProfileBar = New("Frame", {
 			Name = "ProfileBar",
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 16, 1, -10),
-			Size = UDim2.new(0, 140, 0, 38),
+			Position = UDim2.new(0, 0, 1, -DOCK.PROFILE_H),
+			Size = UDim2.new(1, 0, 0, DOCK.PROFILE_H),
 			BackgroundTransparency = 1,
 			ZIndex = 5,
-			Parent = Main,
-		})
-		New("UIListLayout", {
-			Padding = UDim.new(0, 8),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Parent = ProfileBar,
+			Parent = Dock,
 		})
 		local profileSeparator = New("Frame", {
 			Name = "Separator",
-			LayoutOrder = 1,
-			Size = UDim2.new(1, 0, 0, 1),
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 8),
+			Size = UDim2.new(0, DOCK.W - 22, 0, 1),
 			BackgroundColor3 = Theme.Divider,
 			BorderSizePixel = 0,
 			ZIndex = 5,
@@ -1504,17 +1616,17 @@ end
 		})
 		local profileRow = New("Frame", {
 			Name = "ProfileRow",
-			LayoutOrder = 2,
-			Size = UDim2.new(1, 0, 0, 28),
+			Position = UDim2.new(0, 0, 0, 11),
+			Size = UDim2.new(1, 0, 1, -11),
 			BackgroundTransparency = 1,
 			ZIndex = 5,
 			Parent = ProfileBar,
 		})
 		local profileAvatar = New("ImageLabel", {
 			Name = "Avatar",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.fromOffset(24, 24),
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 8),
+			Size = UDim2.fromOffset(28, 28),
 			BackgroundColor3 = Theme.Control,
 			ScaleType = Enum.ScaleType.Crop,
 			Image = "",
@@ -1531,14 +1643,15 @@ end
 		end)
 		local nameLabel = New("TextLabel", {
 			Name = "ProfileName",
-			Position = UDim2.new(0, 34, 0, 0),
-			Size = UDim2.new(1, -34, 1, 0),
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 1, -16),
+			Size = UDim2.new(1, -8, 0, 12),
 			BackgroundTransparency = 1,
 			Text = "********",
 			FontFace = FONT_SEMIBOLD,
-			TextSize = 14,
+			TextSize = 10,
 			TextColor3 = Theme.TextDim,
-			TextXAlignment = Enum.TextXAlignment.Left,
+			TextXAlignment = Enum.TextXAlignment.Center,
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			ZIndex = 5,
 			Parent = profileRow,
@@ -1594,8 +1707,8 @@ end
 	})
 	local Window = {}
 	local sidebarOrder = 0
-	local sidebarSections = {}
 	local tabs = {}
+	local tabTooltips = {}
 	local keybinds = {}
 	local optionKeybindEntries = {}
 	local modules = {}
@@ -1656,6 +1769,9 @@ end
 		if panelScale then
 			panelScale.Scale = base * mobileScale
 		end
+		if dockScale then
+			dockScale.Scale = base * mobileScale
+		end
 	end
 	updateMobileScale = function()
 		if destroyed then return end
@@ -1665,6 +1781,7 @@ end
 		end
 		applyUiScale()
 		if syncPanelPosition then syncPanelPosition() end
+		syncDockPosition()
 	end
 	Connect(workspace:GetPropertyChangedSignal("CurrentCamera"), function()
 		if updateMobileScale then updateMobileScale() end
@@ -1703,12 +1820,23 @@ end
 	end)
 	local function setVisible(visible, instant)
 		uiVisible = visible
+		if not visible then
+			for _, tip in ipairs(tabTooltips) do
+				tip.Visible = false
+			end
+		end
 		if hookPanelOpen then hookPanelOpen() end
 		if instant then
 			Main.Visible = visible
 			Main.GroupTransparency = visible and 0 or 1
 			uiScale.Scale = (visible and 1 or 0.96) * mobileScale
 			Main.Position = uiHomePos
+			if Dock and Dock.Parent then
+				syncDockPosition()
+				Dock.Visible = visible
+				Dock.GroupTransparency = visible and 0 or 1
+				dockScale.Scale = (visible and 1 or 0.96) * mobileScale
+			end
 			if panel then
 				panel.Visible = visible and panelOpen
 				panel.GroupTransparency = visible and 0 or 1
@@ -1727,6 +1855,13 @@ end
 				uiHomePos.X.Offset + 18,
 				uiHomePos.Y.Scale,
 				uiHomePos.Y.Offset + 10)
+			if Dock and Dock.Parent then
+				syncDockPosition()
+				Dock.Visible = true
+				Dock.GroupTransparency = 1
+				Tween(Dock, TWEEN_OPEN, { GroupTransparency = 0 })
+				Tween(dockScale, TWEEN_OPEN, { Scale = mobileScale })
+			end
 			Tween(Main, TWEEN_OPEN, {
 				GroupTransparency = 0,
 				Position = uiHomePos,
@@ -1745,6 +1880,13 @@ end
 		else
 			Tween(Main, TWEEN_MED, { GroupTransparency = 1 })
 			Tween(uiScale, TWEEN_MED, { Scale = 0.96 * mobileScale })
+			if Dock and Dock.Parent then
+				Tween(Dock, TWEEN_MED, { GroupTransparency = 1 })
+				Tween(dockScale, TWEEN_MED, { Scale = 0.96 * mobileScale })
+				task.delay(0.24, function()
+					if not uiVisible and Dock and Dock.Parent then Dock.Visible = false end
+				end)
+			end
 			if panel and panel.Visible then
 				Tween(panel, TWEEN_MED, { GroupTransparency = 1 })
 				Tween(panelScale, TWEEN_MED, { Scale = 0.96 * mobileScale })
@@ -4050,7 +4192,7 @@ end
 			Tween(t.Button, TWEEN_FAST, {
 				BackgroundTransparency = selected and 0.45 or 1,
 			})
-			t.NameLabel.TextColor3 = selected and Theme.Text or Theme.TextDim
+			t.NameLabel.TextColor3 = Theme.TextSoft
 			if t.IconRef then
 				if t.IconRef:IsA("ImageLabel") then
 					Tween(t.IconRef, TWEEN_FAST, { ImageColor3 = selected and Theme.Text or Theme.TextDim })
@@ -4063,65 +4205,6 @@ end
 	end
 	function Window:AddTab(tabOpts)
 		tabOpts = tabOpts or {}
-		if type(tabOpts.Section) == "string" and tabOpts.Section ~= "" and not sidebarSections[tabOpts.Section] then
-			sidebarSections[tabOpts.Section] = true
-			local sep = New("Frame", {
-				Name = "Section_" .. tabOpts.Section,
-				LayoutOrder = sidebarOrder + 1,
-				Size = UDim2.new(1, 0, 0, 22),
-				BackgroundTransparency = 1,
-				Parent = tabScroller,
-			})
-			local sepIcon = MakeIcon(sep, designatedIconFor(tabOpts.Section), 10, Theme.HeaderText)
-			sepIcon.AnchorPoint = Vector2.new(0, 0.5)
-			sepIcon.Position = UDim2.new(0, 3, 1, -4)
-			sepIcon.ZIndex = 2
-			local sepLabel = New("TextLabel", {
-				Position = UDim2.new(0, 17, 1, -8.5),
-				Size = UDim2.new(0, 0, 0, 9),
-				AutomaticSize = Enum.AutomaticSize.X,
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Text = string.upper(tabOpts.Section),
-				Font = Enum.Font.GothamBold,
-				TextSize = 9,
-				TextColor3 = Theme.HeaderText,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				ZIndex = 2,
-				Parent = sep,
-			})
-			local sepLine = New("Frame", {
-				Position = UDim2.new(0, 3, 1, -4),
-				Size = UDim2.new(1, -5, 0, 1),
-				BackgroundColor3 = Theme.Divider,
-				BorderSizePixel = 0,
-				ZIndex = 1,
-				Parent = sep,
-			})
-			local function layoutLine()
-				local textEnd = sepLabel.AbsolutePosition.X + sepLabel.AbsoluteSize.X
-				local lineStart = textEnd + 6
-				local relStart = lineStart - sep.AbsolutePosition.X
-				local relEnd = sep.AbsoluteSize.X - 2
-				if relEnd <= relStart then
-					sepLine.Visible = false
-					return
-				end
-				sepLine.Visible = true
-				sepLine.Position = UDim2.new(0, relStart, 0, sepLabel.Position.Y.Offset + 4)
-				sepLine.Size = UDim2.new(0, relEnd - relStart, 0, 1)
-			end
-			Connect(sepLabel:GetPropertyChangedSignal("AbsoluteSize"), layoutLine)
-			Connect(sep:GetPropertyChangedSignal("AbsolutePosition"), layoutLine)
-			Connect(sep:GetPropertyChangedSignal("AbsoluteSize"), layoutLine)
-			task.defer(layoutLine)
-			bindTheme(function()
-				sepLabel.TextColor3 = Theme.HeaderText
-				sepIcon.ImageColor3 = Theme.HeaderText
-				sepLine.BackgroundColor3 = Theme.Divider
-			end)
-			sidebarOrder += 1
-		end
 		sidebarOrder += 1
 		local Tab = { Name = tabOpts.Name or "Tab" }
 		local button = New("TextButton", {
@@ -4137,25 +4220,51 @@ end
 		})
 		Corner(button, 8)
 		local iconKey = tabOpts.Icon or designatedIconFor(Tab.Name, tabOpts.Section)
-		local iconRef = MakeIcon(button, iconKey, 17, Theme.TextDim)
-		iconRef.AnchorPoint = Vector2.new(0, 0.5)
-		iconRef.Position = UDim2.new(0, 12, 0.5, 0)
+		local iconRef = MakeIcon(button, iconKey, 18, Theme.TextDim)
+		iconRef.AnchorPoint = Vector2.new(0.5, 0.5)
+		iconRef.Position = UDim2.new(0.5, 0, 0.5, 0)
 		local nameLabel = New("TextLabel", {
-			Position = UDim2.new(0, 36, 0, 0),
-			Size = UDim2.new(1, -42, 1, 0),
-			BackgroundTransparency = 1,
+			Name = "Tip_" .. Tab.Name,
+			AnchorPoint = Vector2.new(0, 0.5),
+			Size = UDim2.new(0, 0, 0, 18),
+			AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = Theme.Group,
+			BackgroundTransparency = 0.2,
 			Text = Tab.Name,
 			FontFace = FONT_SEMIBOLD,
-			TextSize = 14,
-			TextColor3 = Theme.TextDim,
+			TextSize = 12,
+			TextColor3 = Theme.TextSoft,
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = button,
+			Visible = false,
+			ZIndex = 60,
+			Parent = Gui,
 		})
+		Corner(nameLabel, 5)
+		local tipStroke = Stroke(nameLabel, Theme.GroupStroke, 0.4)
+		Pad(nameLabel, 0, 0, 7, 7)
+		tabTooltips[#tabTooltips + 1] = nameLabel
+		local function placeTip()
+			if not (nameLabel.Visible and button.Parent and Dock.Parent) then return end
+			local gx, gy = Gui.AbsolutePosition.X, Gui.AbsolutePosition.Y
+			local dx = Dock.AbsolutePosition.X + Dock.AbsoluteSize.X - gx + 10
+			local dy = button.AbsolutePosition.Y - gy + button.AbsoluteSize.Y / 2
+			nameLabel.Position = UDim2.new(0, dx, 0, dy)
+		end
+		button.MouseEnter:Connect(function()
+			nameLabel.Visible = true
+			placeTip()
+		end)
+		button.MouseLeave:Connect(function()
+			nameLabel.Visible = false
+		end)
+		Connect(button:GetPropertyChangedSignal("AbsolutePosition"), placeTip)
 		bindTheme(function()
 			local sel = (currentTab == Tab)
 			button.BackgroundColor3 = Theme.TabSelected
 			button.BackgroundTransparency = sel and 0.45 or 1
-			nameLabel.TextColor3 = sel and Theme.Text or Theme.TextDim
+			nameLabel.TextColor3 = Theme.TextSoft
+			nameLabel.BackgroundColor3 = Theme.Group
+			tipStroke.Color = Theme.GroupStroke
 			if iconRef:IsA("ImageLabel") then
 				iconRef.ImageColor3 = sel and Theme.Text or Theme.TextDim
 			elseif iconRef:IsA("Frame") then
@@ -5340,6 +5449,7 @@ end
 	Window.GearButton = gearBtn
 	Window.SettingsPanel = panel
 	Window.MinimizeButton = minimizeBtn
+	Window.Dock = Dock
 	function Window:GetReopenMode() return uiReopenMode end
 	function Window:SetReopenMode(mode)
 		if setReopenMode then return setReopenMode(mode) end

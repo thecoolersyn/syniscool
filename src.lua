@@ -152,31 +152,32 @@ local THEMES = {
 		},
 	},
 	Frost = {
-		Background   = Color3.fromRGB(245, 247, 250),
+		Background   = Color3.fromRGB(243, 246, 250),
 		Group        = Color3.fromRGB(255, 255, 255),
-		GroupStroke  = Color3.fromRGB(214, 219, 227),
-		Control      = Color3.fromRGB(236, 240, 244),
-		ControlHover = Color3.fromRGB(226, 231, 237),
-		Divider      = Color3.fromRGB(223, 227, 233),
-		Text         = Color3.fromRGB(33, 37, 45),
-		TextDim      = Color3.fromRGB(120, 126, 136),
-		TextSoft     = Color3.fromRGB(66, 72, 84),
-		HeaderText   = Color3.fromRGB(132, 138, 148),
-		TabSelected  = Color3.fromRGB(232, 236, 241),
-		PillOff      = Color3.fromRGB(224, 228, 234),
-		KnobOff      = Color3.fromRGB(252, 253, 255),
-		PillOn       = Color3.fromRGB(82, 104, 244),
-		KnobOn       = Color3.fromRGB(245, 247, 250),
-		SliderTrack  = Color3.fromRGB(222, 226, 233),
-		SliderFill   = Color3.fromRGB(82, 104, 244),
-		Scrollbar    = Color3.fromRGB(178, 184, 194),
-		CardTransparency   = 0.1,
-		NotifyTransparency = 0.12,
+		GroupStroke  = Color3.fromRGB(213, 221, 232),
+		Control      = Color3.fromRGB(233, 238, 245),
+		ControlHover = Color3.fromRGB(237, 241, 248),
+		Divider      = Color3.fromRGB(213, 221, 232),
+		Text         = Color3.fromRGB(32, 43, 60),
+		TextDim      = Color3.fromRGB(82, 97, 118),
+		TextSoft     = Color3.fromRGB(32, 43, 60),
+		HeaderText   = Color3.fromRGB(116, 129, 150),
+		TabSelected  = Color3.fromRGB(225, 232, 250),
+		PillOff      = Color3.fromRGB(233, 238, 245),
+		KnobOff      = Color3.fromRGB(255, 255, 255),
+		PillOn       = Color3.fromRGB(82, 104, 184),
+		KnobOn       = Color3.fromRGB(255, 255, 255),
+		SliderTrack  = Color3.fromRGB(233, 238, 245),
+		SliderFill   = Color3.fromRGB(82, 104, 184),
+		Scrollbar    = Color3.fromRGB(174, 186, 203),
+		CardTransparency   = 0,
+		NotifyTransparency = 0.05,
+		Accent       = Color3.fromRGB(52, 76, 145),
 		TitleGradient = {
-			Color3.fromRGB(82, 104, 244),
-			Color3.fromRGB(120, 126, 140),
-			Color3.fromRGB(226, 230, 236),
-			Color3.fromRGB(82, 104, 244),
+			Color3.fromRGB(32, 43, 60),
+			Color3.fromRGB(32, 43, 60),
+			Color3.fromRGB(32, 43, 60),
+			Color3.fromRGB(32, 43, 60),
 		},
 	},
 	Midnight = {
@@ -360,6 +361,7 @@ local function applyThemeTokens(name)
 	for k, v in pairs(t) do
 		Theme[k] = v
 	end
+	Theme.Accent = t.Accent or t.TitleGradient[1]
 	for _, fn in ipairs(themeAppliers) do
 		pcall(fn)
 	end
@@ -1020,6 +1022,8 @@ function Library:CreateWindow(opts)
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
 	local DOCK = { W = 72, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }
+	local tabs = {}
+	local tabTooltips = {}
 	local Dock = New("CanvasGroup", {
 		Name = "Dock",
 		AnchorPoint = Vector2.new(0, 0),
@@ -1044,13 +1048,16 @@ function Library:CreateWindow(opts)
 		if mw <= 0 or mh <= 0 then
 			mw, mh = Main.AbsoluteSize.X, Main.AbsoluteSize.Y
 		end
+		-- height hugs content (logo + nav buttons + profile), capped at the window height
+		local navH = #tabs * 36 + math.max(0, #tabs - 1) * 4 + 8
+		local dockH = math.min(mh, DOCK.LOGO_H + navH + DOCK.PROFILE_H)
 		Dock.Position = UDim2.new(
 			Main.Position.X.Scale,
 			Main.Position.X.Offset - mw / 2 - DOCK.GAP - DOCK.W,
 			Main.Position.Y.Scale,
 			Main.Position.Y.Offset - mh / 2
 		)
-		Dock.Size = UDim2.fromOffset(DOCK.W, mh)
+		Dock.Size = UDim2.fromOffset(DOCK.W, dockH)
 	end
 	syncDockPosition()
 	Connect(Main:GetPropertyChangedSignal("Position"), syncDockPosition)
@@ -1085,7 +1092,7 @@ function Library:CreateWindow(opts)
 			local stroke = Dock:FindFirstChildOfClass("UIStroke")
 			if stroke then stroke.Color = Theme.GroupStroke end
 			if logoIcon:IsA("ImageLabel") then
-				logoIcon.ImageColor3 = logoUrl and Theme.TitleGradient[1] or Theme.Text
+				logoIcon.ImageColor3 = logoUrl and Theme.Accent or Theme.Text
 			else
 				logoIcon.BackgroundColor3 = Theme.Text
 			end
@@ -1124,8 +1131,8 @@ function Library:CreateWindow(opts)
 	})
 	local Content = New("Frame", {
 		Name = "Content",
-		Position = UDim2.new(0, 18, 0, HEADER_H),
-		Size = UDim2.new(1, -36, 1, -HEADER_H),
+		Position = UDim2.new(0, 18, 0, HEADER_H + 12),
+		Size = UDim2.new(1, -36, 1, -(HEADER_H + 12)),
 		BackgroundTransparency = 1,
 		Parent = Main,
 	})
@@ -1587,7 +1594,7 @@ end
 		AnchorPoint = Vector2.new(0, 0.5),
 		Size = UDim2.new(0, 3, 0, 18),
 		Position = UDim2.new(0, 4, 0, 0),
-		BackgroundColor3 = Theme.TitleGradient[1],
+		BackgroundColor3 = Theme.Accent,
 		BorderSizePixel = 0,
 		Visible = false,
 		ZIndex = 5,
@@ -1595,7 +1602,7 @@ end
 	})
 	Corner(Indicator, 2)
 	bindTheme(function()
-		Indicator.BackgroundColor3 = Theme.TitleGradient[1]
+		Indicator.BackgroundColor3 = Theme.Accent
 	end)
 	do
 		local ProfileBar = New("Frame", {
@@ -1709,8 +1716,6 @@ end
 	})
 	local Window = {}
 	local sidebarOrder = 0
-	local tabs = {}
-	local tabTooltips = {}
 	local keybinds = {}
 	local optionKeybindEntries = {}
 	local modules = {}
@@ -4408,6 +4413,7 @@ end
 		end
 		Tab.CreateGroupbox = Tab.AddGroupbox
 		table.insert(tabs, Tab)
+		syncDockPosition()
 		button.MouseButton1Click:Connect(function()
 			if currentTab ~= Tab then
 				selectTab(Tab)

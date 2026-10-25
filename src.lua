@@ -1049,7 +1049,7 @@ function Library:CreateWindow(opts)
 			mw, mh = Main.AbsoluteSize.X, Main.AbsoluteSize.Y
 		end
 		-- height hugs content (logo + nav buttons + profile), capped at the window height
-		local navH = #tabs * 36 + math.max(0, #tabs - 1) * 4 + 8
+		local navH = #tabs * 34 + math.max(0, #tabs - 1) * 4 + 8
 		local dockH = math.min(mh, DOCK.LOGO_H + navH + DOCK.PROFILE_H)
 		Dock.Position = UDim2.new(
 			Main.Position.X.Scale,
@@ -1127,6 +1127,7 @@ function Library:CreateWindow(opts)
 	New("UIListLayout", {
 		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		Parent = tabScroller,
 	})
 	local Content = New("Frame", {
@@ -1581,29 +1582,6 @@ end
 			syncDockPosition()
 		end)
 	end
-	local SidebarFX = New("Frame", {
-		Name = "SidebarFX",
-		Position = UDim2.new(0, 0, 0, DOCK.LOGO_H),
-		Size = UDim2.new(1, 0, 1, -(DOCK.LOGO_H + DOCK.PROFILE_H)),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		Parent = Dock,
-	})
-	local Indicator = New("Frame", {
-		Name = "TabIndicator",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Size = UDim2.new(0, 3, 0, 18),
-		Position = UDim2.new(0, 4, 0, 0),
-		BackgroundColor3 = Theme.Accent,
-		BorderSizePixel = 0,
-		Visible = false,
-		ZIndex = 5,
-		Parent = SidebarFX,
-	})
-	Corner(Indicator, 2)
-	bindTheme(function()
-		Indicator.BackgroundColor3 = Theme.Accent
-	end)
 	do
 		local ProfileBar = New("Frame", {
 			Name = "ProfileBar",
@@ -1722,7 +1700,6 @@ end
 	local rebinding = nil
 	local currentTab = nil
 	local uiVisible = false
-	local indicatorConn = nil
 	local destroyed = false
 	local mobileScale = 1
 	local lastViewportCam = nil
@@ -4153,28 +4130,6 @@ end
 		table.insert(modules, Module)
 		return Module
 	end
-	local function moveIndicatorTo(tab, instant)
-		if indicatorConn then
-			indicatorConn:Disconnect()
-			indicatorConn = nil
-		end
-		local btn = tab.Button
-		local function place(inst)
-			if not btn.Parent then return end
-			local y = btn.AbsolutePosition.Y - Sidebar.AbsolutePosition.Y
-				+ btn.AbsoluteSize.Y / 2
-			Indicator.Visible = true
-			if inst then
-				Indicator.Position = UDim2.new(0, 4, 0, y)
-			else
-				Tween(Indicator, TWEEN_MED, { Position = UDim2.new(0, 4, 0, y) })
-			end
-		end
-		task.defer(place, instant)
-		indicatorConn = btn:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
-			place(true)
-		end)
-	end
 	local function selectTab(tab, instant)
 		local previous = currentTab
 		currentTab = tab
@@ -4197,7 +4152,7 @@ end
 				t.Page.Visible = false
 			end
 			Tween(t.Button, TWEEN_FAST, {
-				BackgroundTransparency = selected and 0.45 or 1,
+				BackgroundTransparency = selected and 0 or 1,
 			})
 			t.NameLabel.TextColor3 = Theme.TextSoft
 			if t.IconRef then
@@ -4208,7 +4163,6 @@ end
 				end
 			end
 		end
-		moveIndicatorTo(tab, instant)
 	end
 	function Window:AddTab(tabOpts)
 		tabOpts = tabOpts or {}
@@ -4217,7 +4171,7 @@ end
 		local button = New("TextButton", {
 			Name = "Tab_" .. Tab.Name,
 			LayoutOrder = sidebarOrder,
-			Size = UDim2.new(1, 0, 0, 36),
+			Size = UDim2.fromOffset(34, 34),
 			BackgroundTransparency = 1,
 			BackgroundColor3 = Theme.TabSelected,
 			Text = "",
@@ -4268,7 +4222,7 @@ end
 		bindTheme(function()
 			local sel = (currentTab == Tab)
 			button.BackgroundColor3 = Theme.TabSelected
-			button.BackgroundTransparency = sel and 0.45 or 1
+			button.BackgroundTransparency = sel and 0 or 1
 			nameLabel.TextColor3 = Theme.TextSoft
 			nameLabel.BackgroundColor3 = Theme.Group
 			tipStroke.Color = Theme.GroupStroke
@@ -5491,10 +5445,6 @@ end
 		ensureFloatingButton = nil
 		setReopenMode = nil
 		ReleaseConns()
-		if indicatorConn then
-			pcall(function() indicatorConn:Disconnect() end)
-			indicatorConn = nil
-		end
 		table.clear(keybinds)
 		table.clear(modules)
 		table.clear(tabs)

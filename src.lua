@@ -1041,6 +1041,7 @@ function Library:CreateWindow(opts)
 	Corner(Dock, 12)
 	Stroke(Dock, Theme.GroupStroke, 0.4)
 	local dockScale = New("UIScale", { Scale = 0.96, Parent = Dock })
+	local DOCK_MIN_H = DOCK.LOGO_H + DOCK.PROFILE_H + 42
 	local function syncDockPosition()
 		if not (Dock and Dock.Parent) then return end
 		local mw = Main.Size.X.Offset
@@ -1048,14 +1049,23 @@ function Library:CreateWindow(opts)
 		if mw <= 0 or mh <= 0 then
 			mw, mh = Main.AbsoluteSize.X, Main.AbsoluteSize.Y
 		end
-		-- height hugs content (logo + nav buttons + profile), capped at the window height
+		-- height hugs content (logo + nav buttons + profile), centered on the main window
+		-- and clamped to the available viewport; the nav scroller absorbs any overflow
 		local navH = #tabs * 34 + math.max(0, #tabs - 1) * 4 + 8
-		local dockH = math.min(mh, DOCK.LOGO_H + navH + DOCK.PROFILE_H)
+		local desiredH = DOCK.LOGO_H + navH + DOCK.PROFILE_H
+		local maxH = mh
+		pcall(function()
+			local cam = workspace.CurrentCamera
+			if cam and cam.ViewportSize.Y > 0 then
+				maxH = math.min(maxH, cam.ViewportSize.Y)
+			end
+		end)
+		local dockH = math.clamp(desiredH, math.min(DOCK_MIN_H, maxH), maxH)
 		Dock.Position = UDim2.new(
 			Main.Position.X.Scale,
 			Main.Position.X.Offset - mw / 2 - DOCK.GAP - DOCK.W,
 			Main.Position.Y.Scale,
-			Main.Position.Y.Offset - mh / 2
+			Main.Position.Y.Offset - dockH / 2
 		)
 		Dock.Size = UDim2.fromOffset(DOCK.W, dockH)
 	end
@@ -1128,6 +1138,7 @@ function Library:CreateWindow(opts)
 		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
 		Parent = tabScroller,
 	})
 	local Content = New("Frame", {
@@ -1190,15 +1201,59 @@ function Library:CreateWindow(opts)
 		end)
 	end
 	local headerDivider = New("Frame", {
-		Position = UDim2.new(0, 0, 0, HEADER_H),
-		Size = UDim2.new(1, 0, 0, 1),
-		BackgroundColor3 = Theme.Divider,
-		BorderSizePixel = 0,
+		Name = "TabDivider",
+		Position = UDim2.new(0, 18, 0, HEADER_H - 6),
+		Size = UDim2.new(1, -36, 0, 12),
+		BackgroundTransparency = 1,
 		ZIndex = 6,
 		Parent = Main,
 	})
+	local dividerLineLeft = New("Frame", {
+		Name = "LineLeft",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 0, 0.5, 0),
+		Size = UDim2.new(0.5, 0, 0, 1),
+		BackgroundColor3 = Theme.Divider,
+		BorderSizePixel = 0,
+		ZIndex = 6,
+		Parent = headerDivider,
+	})
+	local dividerLineRight = New("Frame", {
+		Name = "LineRight",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 0, 0.5, 0),
+		Size = UDim2.new(0.5, 0, 0, 1),
+		BackgroundColor3 = Theme.Divider,
+		BorderSizePixel = 0,
+		ZIndex = 6,
+		Parent = headerDivider,
+	})
+	local dividerLabel = New("TextLabel", {
+		Name = "TabLabel",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0, 0, 1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundTransparency = 1,
+		Text = "",
+		FontFace = FONT_SEMIBOLD,
+		TextSize = 12,
+		TextColor3 = Theme.TextSoft,
+		ZIndex = 6,
+		Parent = headerDivider,
+	})
+	local function syncHeaderDivider()
+		local half = (headerDivider.AbsoluteSize.X - dividerLabel.AbsoluteSize.X) / 2 - 8
+		if half < 0 then half = 0 end
+		dividerLineLeft.Size = UDim2.new(0, half, 0, 1)
+		dividerLineRight.Size = UDim2.new(0, half, 0, 1)
+	end
+	Connect(headerDivider:GetPropertyChangedSignal("AbsoluteSize"), syncHeaderDivider)
+	Connect(dividerLabel:GetPropertyChangedSignal("AbsoluteSize"), syncHeaderDivider)
 	bindTheme(function()
-		headerDivider.BackgroundColor3 = Theme.Divider
+		dividerLineLeft.BackgroundColor3 = Theme.Divider
+		dividerLineRight.BackgroundColor3 = Theme.Divider
+		dividerLabel.TextColor3 = Theme.TextSoft
 	end)
 local openColorPicker = nil
 local function ColorPreview(parent, order, o)
@@ -1804,6 +1859,7 @@ end
 	end)
 	local function setVisible(visible, instant)
 		uiVisible = visible
+		instant = true -- snap open/close: tweening GroupTransparency on the large canvas groups spikes frames
 		if not visible then
 			for _, tip in ipairs(tabTooltips) do
 				tip.Visible = false
@@ -4133,6 +4189,7 @@ end
 	local function selectTab(tab, instant)
 		local previous = currentTab
 		currentTab = tab
+		dividerLabel.Text = tab and ("[ " .. tab.Name .. " ]") or ""
 		for _, t in ipairs(tabs) do
 			local selected = (t == tab)
 			if selected then
@@ -4377,6 +4434,36 @@ end
 			selectTab(Tab, true)
 		end
 		return Tab
+	end
+	function Window:RemoveTab(tab)
+		local idx = table.find(tabs, tab)
+		if not idx then return false end
+		table.remove(tabs, idx)
+		for i, tip in ipairs(tabTooltips) do
+			if tip == tab.NameLabel then
+				table.remove(tabTooltips, i)
+				break
+			end
+		end
+		if tab.NameLabel then
+			pcall(function() tab.NameLabel:Destroy() end)
+		end
+		if tab.Button then
+			pcall(function() tab.Button:Destroy() end)
+		end
+		if tab.Page then
+			pcall(function() tab.Page:Destroy() end)
+		end
+		if currentTab == tab then
+			currentTab = nil
+			if tabs[1] then
+				selectTab(tabs[1], true)
+			else
+				dividerLabel.Text = ""
+			end
+		end
+		syncDockPosition()
+		return true
 	end
 	function Window:Modules() return modules end
 	function Window:FindModule(name)

@@ -1,4 +1,4 @@
-local SRC_PATH = "Norepine/src.lua"
+local SRC_PATH = "NorepineUI/src.lua"
 local raw = readfile(SRC_PATH)
 local fn, cerr = loadstring(raw, "NorepineUI")
 if not fn then
@@ -26,6 +26,18 @@ local modeDd = movSec:AddDropdown({
 	Default = "Fast",
 	Callback = function(v)
 		print("[NorepineTest] Mode -> " .. tostring(v))
+	end,
+})
+local targetsDd = movSec:AddDropdown({
+	Name = "Detection Targets",
+	Options = {"Players", "NPCs", "Objects", "Vehicles"},
+	MultiSelect = true,
+	Default = {"Players"},
+	Placeholder = "Select targets",
+	Searchable = true,
+	MaxSelections = 3,
+	Callback = function(selected)
+		print("[NorepineTest] Targets -> " .. table.concat(selected, ", "))
 	end,
 })
 movSec:AddToggle({ Name = "Fly Speed", Default = false, NotifyOnToggle = true })

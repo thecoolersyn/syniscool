@@ -3497,6 +3497,728 @@ end
 		end)
 		return self
 	end
+	local function BuildMultiDropdown(parent, order, o)
+		o = o or {}
+		local multi = (o.MultiSelect == true)
+		local noKeybinds = (o.NoKeybinds == true)
+		local defs = {}
+		local rawOpts = o.Options or {}
+		for _, opt in ipairs(rawOpts) do
+			if type(opt) == "table" then
+				local name = opt.Name or opt.name or opt.Text or opt.Title or tostring(opt.Value or opt.value or "Option")
+				local value = opt.Value or opt.value
+				if value == nil then value = name end
+				value = tostring(value)
+				local kb = opt.Keybind or opt.keybind or opt.Key or opt.key
+				defs[#defs + 1] = { Name = tostring(name), Value = value, Keybind = kb }
+			else
+				local s = tostring(opt)
+				defs[#defs + 1] = { Name = s, Value = s, Keybind = nil }
+			end
+		end
+		local function defByValue(v)
+			for _, d in ipairs(defs) do
+				if d.Value == tostring(v) then return d end
+			end
+			return nil
+		end
+		local validSet = {}
+		local function rebuildValid()
+			table.clear(validSet)
+			for _, d in ipairs(defs) do validSet[d.Value] = true end
+		end
+		rebuildValid()
+
+		local selected = {}
+		local selectedSet = {}
+		local function isSelectedVal(v) return selectedSet[v] == true end
+
+		local HEADER_H = 26
+		local ROW_H = 24
+		local MAX_LIST_H = 160
+		local placeholder = o.Placeholder or (multi and "Select options" or (defs[1] and defs[1].Name or ""))
+
+		local box = New("Frame", {
+			Name = "Dropdown_" .. tostring(o.Name or "Dropdown"),
+			LayoutOrder = order,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			Parent = parent,
+		})
+		New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, Parent = box })
+		local ddNameLabel = New("TextLabel", {
+			LayoutOrder = 1,
+			Size = UDim2.new(1, 0, 0, 14),
+			BackgroundTransparency = 1,
+			Text = o.Name or "Dropdown",
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 15,
+			TextColor3 = Theme.TextSoft,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = box,
+		})
+		local holder = New("Frame", {
+			LayoutOrder = 2,
+			Size = UDim2.new(1, 0, 0, HEADER_H),
+			BackgroundColor3 = Theme.Control,
+			ClipsDescendants = true,
+			BorderSizePixel = 0,
+			Parent = box,
+		})
+		Corner(holder, 7)
+		local header = New("TextButton", {
+			Size = UDim2.new(1, 0, 0, HEADER_H),
+			BackgroundTransparency = 1,
+			Text = "",
+			AutoButtonColor = false,
+			Parent = holder,
+		})
+		local valueText = New("TextLabel", {
+			Position = UDim2.new(0, 10, 0, 0),
+			Size = UDim2.new(1, -34, 1, 0),
+			BackgroundTransparency = 1,
+			Text = placeholder,
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 14,
+			TextColor3 = Theme.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Parent = header,
+		})
+		local chev = MakeIcon(header, "chevrons-up-down", 14, Theme.TextDim)
+		chev.AnchorPoint = Vector2.new(1, 0.5)
+		chev.Position = UDim2.new(1, -8, 0.5, 0)
+
+		local popup = New("Frame", {
+			Name = "DropdownPopup",
+			Visible = false,
+			Size = UDim2.fromOffset(220, 120),
+			BackgroundColor3 = Theme.Background,
+			BackgroundTransparency = 0.05,
+			BorderSizePixel = 0,
+			ZIndex = 80,
+			Parent = Main,
+		})
+		Corner(popup, 9)
+		local popupStroke = Stroke(popup, Theme.GroupStroke, 0)
+		local guard = New("TextButton", {
+			Name = "DropdownGuard",
+			Visible = false,
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Text = "",
+			AutoButtonColor = false,
+			ZIndex = 79,
+			Parent = Main,
+		})
+
+		local searchable = o.Searchable == true
+		local searchFrame, searchInput
+		local listScroller
+		local emptyLabel
+		local topOffset = 6
+		if searchable then
+			searchFrame = New("Frame", {
+				Position = UDim2.new(0, 6, 0, 6),
+				Size = UDim2.new(1, -12, 0, 26),
+				BackgroundColor3 = Theme.Control,
+				BorderSizePixel = 0,
+				ZIndex = 81,
+				Parent = popup,
+			})
+			Corner(searchFrame, 6)
+			searchInput = New("TextBox", {
+				Position = UDim2.new(0, 8, 0, 0),
+				Size = UDim2.new(1, -16, 1, 0),
+				BackgroundTransparency = 1,
+				Text = "",
+				PlaceholderText = "Search...",
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 13,
+				TextColor3 = Theme.Text,
+				ClearTextOnFocus = false,
+				BorderSizePixel = 0,
+				ZIndex = 82,
+				Parent = searchFrame,
+			})
+			topOffset = 38
+		end
+
+		listScroller = New("ScrollingFrame", {
+			Position = UDim2.new(0, 4, 0, topOffset),
+			Size = UDim2.new(1, -8, 1, -(topOffset + 4)),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			CanvasSize = UDim2.new(0, 0, 0, 0),
+			AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			ScrollingDirection = Enum.ScrollingDirection.Y,
+			ScrollBarThickness = 4,
+			ScrollBarImageColor3 = Theme.Scrollbar,
+			ZIndex = 81,
+			Parent = popup,
+		})
+		New("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = listScroller })
+		New("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 2), PaddingLeft = UDim.new(0, 2), PaddingRight = UDim.new(0, 2), Parent = listScroller })
+
+		emptyLabel = New("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 24),
+			BackgroundTransparency = 1,
+			Text = "No results found",
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 12,
+			TextColor3 = Theme.TextDim,
+			Visible = false,
+			ZIndex = 82,
+			Parent = listScroller,
+		})
+
+		local maxSel = tonumber(o.MaxSelections)
+
+		local queryText = ""
+		local open = false
+
+		local marker = {}
+		local optionEntries = {}
+		local optionKeybindEntries = {}
+
+		local function updateFieldText()
+			if multi then
+				if #selected == 0 then
+					valueText.Text = placeholder
+					valueText.TextColor3 = Theme.TextDim
+				else
+					if #selected == 1 then
+						local d = defByValue(selected[1])
+						valueText.Text = d and d.Name or tostring(selected[1])
+					elseif #selected == 2 then
+						local d1 = defByValue(selected[1]); local d2 = defByValue(selected[2])
+						valueText.Text = (d1 and d1.Name or selected[1]) .. ", " .. (d2 and d2.Name or selected[2])
+					else
+						local d1 = defByValue(selected[1]); local d2 = defByValue(selected[2])
+						valueText.Text = (d1 and d1.Name or selected[1]) .. ", " .. (d2 and d2.Name or selected[2]) .. " +" .. (#selected - 2)
+					end
+					valueText.TextColor3 = Theme.TextSoft
+				end
+			else
+				if #selected == 0 then
+					valueText.Text = placeholder
+					valueText.TextColor3 = Theme.TextDim
+				else
+					local d = defByValue(selected[1])
+					valueText.Text = d and d.Name or tostring(selected[1])
+					valueText.TextColor3 = Theme.TextSoft
+				end
+			end
+		end
+
+		local function emitCallback()
+			if o.Callback then
+				if multi then
+					local copy = {}
+					for i, v in ipairs(selected) do copy[i] = v end
+					task.spawn(o.Callback, copy)
+				else
+					task.spawn(o.Callback, selected[1])
+				end
+			end
+		end
+
+		local function filteredDefs()
+			local out = {}
+			local q = string.lower(queryText)
+			for _, d in ipairs(defs) do
+				if q == "" or string.find(string.lower(d.Name), q, 1, true) then
+					out[#out + 1] = d
+				end
+			end
+			return out
+		end
+
+		local function rebuildRows()
+			for _, ch in ipairs(listScroller:GetChildren()) do
+				if ch:IsA("TextButton") or ch:IsA("Frame") then
+					ch:Destroy()
+				end
+			end
+			local list = filteredDefs()
+			if #list == 0 then
+				emptyLabel.Visible = true
+			else
+				emptyLabel.Visible = false
+			end
+			for i, d in ipairs(list) do
+				local rowBtn = New("TextButton", {
+					LayoutOrder = i,
+					Size = UDim2.new(1, 0, 0, ROW_H),
+					BackgroundTransparency = 1,
+					Text = "",
+					AutoButtonColor = false,
+					ZIndex = 82,
+					Parent = listScroller,
+				})
+				local sel = isSelectedVal(d.Value)
+				if multi then
+					local cb = New("Frame", {
+						Position = UDim2.new(0, 6, 0.5, 0),
+						AnchorPoint = Vector2.new(0, 0.5),
+						Size = UDim2.fromOffset(14, 14),
+						BackgroundColor3 = sel and Theme.PillOn or Theme.Control,
+						BorderSizePixel = 0,
+						ZIndex = 83,
+						Parent = rowBtn,
+					})
+					Corner(cb, 3)
+					Stroke(cb, Theme.GroupStroke, 0)
+					local check = New("TextLabel", {
+						Size = UDim2.new(1, 0, 1, 0),
+						BackgroundTransparency = 1,
+						Text = sel and "✓" or "",
+						Font = Enum.Font.GothamBold,
+						TextSize = 11,
+						TextColor3 = sel and Theme.KnobOn or Theme.TextDim,
+						ZIndex = 84,
+						Parent = cb,
+					})
+				end
+				local lbl = New("TextLabel", {
+					Position = UDim2.new(0, multi and 28 or 10, 0, 0),
+					Size = UDim2.new(1, noKeybinds and (multi and -34 or -20) or (multi and -80 or -70), 1, 0),
+					BackgroundTransparency = 1,
+					Text = d.Name,
+					FontFace = FONT_SEMIBOLD,
+					TextSize = 13,
+					TextColor3 = sel and Theme.Text or Theme.TextDim,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					ZIndex = 83,
+					Parent = rowBtn,
+				})
+				local chip = nil
+				if not noKeybinds then
+					chip = New("TextButton", {
+						Name = "Keybind",
+						AnchorPoint = Vector2.new(1, 0.5),
+						Position = UDim2.new(1, -8, 0.5, 0),
+						Size = UDim2.new(0, 0, 0, 18),
+						AutomaticSize = Enum.AutomaticSize.X,
+						BackgroundTransparency = 1,
+						BackgroundColor3 = Theme.TextSoft,
+						Text = "[...]",
+						FontFace = FONT_SEMIBOLD,
+						TextSize = 12,
+						TextColor3 = Theme.TextDim,
+						AutoButtonColor = false,
+						BorderSizePixel = 0,
+						ZIndex = 84,
+						Parent = rowBtn,
+					})
+					Corner(chip, 4)
+					Pad(chip, 0, 0, 4, 4)
+				end
+
+				local entry = nil
+				if not noKeybinds then
+					entry = optionEntries[d.Value]
+					if not entry then
+						entry = { Keybind = nil, Chip = nil, Kind = "DropdownOption", OptionName = d.Value, Owner = marker }
+						function entry:Get() return isSelectedVal(d.Value) end
+						function entry:Set()
+							if multi then
+								if isSelectedVal(d.Value) then
+									for i2, v in ipairs(selected) do if v == d.Value then table.remove(selected, i2) break end end
+									selectedSet[d.Value] = nil
+								else
+									if maxSel and #selected >= maxSel then return end
+									selected[#selected + 1] = d.Value
+									selectedSet[d.Value] = true
+								end
+							else
+								selected = { d.Value }
+								selectedSet = { [d.Value] = true }
+							end
+							updateFieldText()
+							rebuildRows()
+							emitCallback()
+						end
+						function entry:Bind(newKey)
+							entry.Keybind = newKey
+							if entry.OnBind then entry.OnBind(newKey) end
+							if entry.Chip then entry.Chip.Text = KeybindText(entry.Keybind) end
+							if keybindListInvalidate then keybindListInvalidate() end
+						end
+						function entry:BeginRebind()
+							local c = entry.Chip
+							if not c then return end
+							c.Text = "[...]"
+							Tween(c, TWEEN_FAST, {
+								BackgroundColor3 = Theme.TextSoft,
+								BackgroundTransparency = 0,
+								TextColor3 = Theme.Background,
+							})
+						end
+						function entry:EndRebind()
+							local c = entry.Chip
+							if c then Tween(c, TWEEN_FAST, { BackgroundTransparency = 1 }) end
+							if c then c.Text = KeybindText(entry.Keybind) end
+						end
+						function entry:RefreshChip()
+							local c = entry.Chip
+							if c then c.Text = KeybindText(entry.Keybind) end
+						end
+						optionEntries[d.Value] = entry
+						table.insert(optionKeybindEntries, { Name = d.Name, Entry = entry })
+					end
+					entry.OptionName = d.Value
+					local initKey = nil
+					if d.Keybind ~= nil then
+						if typeof(d.Keybind) == "EnumItem" then initKey = d.Keybind
+						elseif type(d.Keybind) == "string" and Enum.KeyCode[d.Keybind] then initKey = Enum.KeyCode[d.Keybind] end
+					end
+					if not entry._registered then
+						entry._registered = true
+						-- register in global keybinds list and set initial key
+						if initKey ~= nil then
+							entry.Keybind = initKey
+						end
+						table.insert(keybinds, entry)
+					end
+					if chip then
+						chip.Text = KeybindText(entry.Keybind)
+						entry.Chip = chip
+						if entry.Keybind then chip.TextColor3 = Theme.TextSoft else chip.TextColor3 = Theme.TextDim end
+						chip.MouseButton1Click:Connect(function()
+							if rebinding then return end
+							rebinding = { Entry = entry }
+							entry:BeginRebind()
+						end)
+					end
+				end
+
+				rowBtn.MouseEnter:Connect(function()
+					Tween(lbl, TWEEN_FAST, { TextColor3 = Theme.Text })
+					Tween(rowBtn, TWEEN_FAST, { BackgroundTransparency = 0.88 })
+				end)
+				rowBtn.MouseLeave:Connect(function()
+					Tween(lbl, TWEEN_FAST, { TextColor3 = isSelectedVal(d.Value) and Theme.Text or Theme.TextDim })
+					Tween(rowBtn, TWEEN_FAST, { BackgroundTransparency = 1 })
+				end)
+				rowBtn.MouseButton1Click:Connect(function()
+					if multi then
+						if selectedSet[d.Value] then
+							for i2, v in ipairs(selected) do if v == d.Value then table.remove(selected, i2) break end end
+							selectedSet[d.Value] = nil
+						else
+							if maxSel and #selected >= maxSel then
+								Tween(holder, TWEEN_FAST, { BackgroundColor3 = Theme.ControlHover })
+								task.delay(0.18, function()
+									if holder.Parent then Tween(holder, TWEEN_FAST, { BackgroundColor3 = Theme.Control }) end
+								end)
+								return
+							end
+							selected[#selected + 1] = d.Value
+							selectedSet[d.Value] = true
+						end
+					else
+						selected = { d.Value }
+						selectedSet = { [d.Value] = true }
+					end
+					updateFieldText()
+					rebuildRows()
+					emitCallback()
+				end)
+			end
+		end
+
+		local function placePopup()
+			local mx, my = Main.AbsolutePosition.X, Main.AbsolutePosition.Y
+			local mw, mh = Main.AbsoluteSize.X, Main.AbsoluteSize.Y
+			local fieldAbs = holder.AbsolutePosition
+			local fieldSize = holder.AbsoluteSize
+			local pw = math.max(200, fieldSize.X)
+			local rows = #filteredDefs()
+			local listH = rows * ROW_H + 8
+			if searchable then listH = listH + 34 end
+			if listH < 50 then listH = 50 end
+			if listH > MAX_LIST_H then listH = MAX_LIST_H end
+			popup.Size = UDim2.fromOffset(pw, listH + topOffset + 4)
+			local sx = fieldAbs.X - mx
+			local sy = fieldAbs.Y - my + fieldSize.Y + 4
+			if sy + popup.Size.Y.Offset > mh - 6 then
+				sy = fieldAbs.Y - my - popup.Size.Y.Offset - 4
+			end
+			sx = math.max(6, math.min(sx, mw - pw - 6))
+			sy = math.max(6, math.min(sy, mh - popup.Size.Y.Offset - 6))
+			popup.Position = UDim2.new(0, sx, 0, sy)
+		end
+
+		local setOpen
+		setOpen = function(state)
+			state = state == true
+			if state == open then return end
+			open = state
+			if state then
+				placePopup()
+				rebuildRows()
+				guard.Visible = true
+				popup.Visible = true
+				Tween(chev, TWEEN_MED, { Rotation = 180 })
+			else
+				guard.Visible = false
+				popup.Visible = false
+				Tween(chev, TWEEN_MED, { Rotation = 0 })
+			end
+		end
+
+		guard.MouseButton1Click:Connect(function()
+			setOpen(false)
+		end)
+		header.MouseButton1Click:Connect(function()
+			setOpen(not open)
+		end)
+		header.MouseEnter:Connect(function()
+			Tween(valueText, TWEEN_FAST, { TextColor3 = Theme.Text })
+		end)
+		header.MouseLeave:Connect(function()
+			Tween(valueText, TWEEN_FAST, { TextColor3 = (#selected == 0) and Theme.TextDim or Theme.TextSoft })
+		end)
+
+		Connect(UserInputService.InputBegan, function(input, gameProcessed)
+			if not open then return end
+			if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			local pos = input.Position
+			local function inside(frame)
+				local ap, as = frame.AbsolutePosition, frame.AbsoluteSize
+				return pos.X >= ap.X and pos.X <= ap.X + as.X and pos.Y >= ap.Y and pos.Y <= ap.Y + as.Y
+			end
+			if not inside(popup) and not inside(holder) then
+				setOpen(false)
+			end
+		end)
+
+		if searchable and searchInput then
+			Connect(searchInput:GetPropertyChangedSignal("Text"), function()
+				queryText = searchInput.Text or ""
+				rebuildRows()
+				placePopup()
+			end)
+		end
+
+		local function setSelection(newArr, fire)
+			local newList = {}
+			local newSet = {}
+			for _, v in ipairs(newArr or {}) do
+				local s = tostring(v)
+				local resolved = s
+				local d = defByValue(s)
+				if not d then
+					for _, dd in ipairs(defs) do if dd.Name == s then resolved = dd.Value break end end
+				else
+					resolved = d.Value
+				end
+				if validSet[resolved] and not newSet[resolved] then
+					if multi and maxSel and #newList >= maxSel then break end
+					if not multi then
+						newList = { resolved }
+						newSet = { [resolved] = true }
+						break
+					end
+					newList[#newList + 1] = resolved
+					newSet[resolved] = true
+				end
+			end
+			selected = newList
+			selectedSet = newSet
+			updateFieldText()
+			rebuildRows()
+			if fire ~= false then emitCallback() end
+		end
+
+		local self = { Kind = "Dropdown", MultiSelect = multi }
+		self.Get = function()
+			if multi then
+				local copy = {}
+				for i, v in ipairs(selected) do copy[i] = v end
+				return copy
+			else
+				return selected[1]
+			end
+		end
+		self.Set = function(_, v, fire)
+			local arr = {}
+			if type(v) == "table" then
+				for _, x in ipairs(v) do arr[#arr + 1] = x end
+			elseif v ~= nil then
+				arr[1] = v
+			end
+			setSelection(arr, fire ~= false)
+		end
+		self.SetSilent = function(_, v) self:Set(v, false) end
+		self.Clear = function(_, fire)
+			setSelection({}, fire ~= false)
+		end
+		self.Select = function(_, option, fire)
+			local s = tostring(option)
+			local resolved = s
+			local d = defByValue(s)
+			if not d then
+				for _, dd in ipairs(defs) do if dd.Name == s then resolved = dd.Value break end end
+			else
+				resolved = d.Value
+			end
+			if not validSet[resolved] then return false end
+			if multi then
+				if selectedSet[resolved] then return true end
+				if maxSel and #selected >= maxSel then
+					Tween(holder, TWEEN_FAST, { BackgroundColor3 = Theme.ControlHover })
+					task.delay(0.18, function()
+						if holder.Parent then Tween(holder, TWEEN_FAST, { BackgroundColor3 = Theme.Control }) end
+					end)
+					return false
+				end
+				selected[#selected + 1] = resolved
+				selectedSet[resolved] = true
+			else
+				selected = { resolved }
+				selectedSet = { [resolved] = true }
+			end
+			updateFieldText()
+			rebuildRows()
+			if fire ~= false then emitCallback() end
+			return true
+		end
+		self.Deselect = function(_, option, fire)
+			local s = tostring(option)
+			local resolved = s
+			local d = defByValue(s)
+			if not d then
+				for _, dd in ipairs(defs) do if dd.Name == s then resolved = dd.Value break end end
+			else
+				resolved = d.Value
+			end
+			if not selectedSet[resolved] then return false end
+			for i, v in ipairs(selected) do
+				if v == resolved then table.remove(selected, i) break end
+			end
+			selectedSet[resolved] = nil
+			updateFieldText()
+			rebuildRows()
+			if fire ~= false then emitCallback() end
+			return true
+		end
+		self.Refresh = function(_, newOptions, keep)
+			defs = {}
+			local ro = newOptions or {}
+			for _, opt in ipairs(ro) do
+				if type(opt) == "table" then
+					local name = opt.Name or opt.name or opt.Text or opt.Title or tostring(opt.Value or opt.value or "Option")
+					local value = opt.Value or opt.value
+					if value == nil then value = name end
+					value = tostring(value)
+					local kb = opt.Keybind or opt.keybind or opt.Key or opt.key
+					defs[#defs + 1] = { Name = tostring(name), Value = value, Keybind = kb }
+				else
+					local s = tostring(opt)
+					defs[#defs + 1] = { Name = s, Value = s, Keybind = nil }
+				end
+			end
+			rebuildValid()
+			local newList = {}
+			local newSet = {}
+			for _, s in ipairs(selected) do
+				if validSet[s] then
+					newList[#newList + 1] = s
+					newSet[s] = true
+				end
+			end
+			selected = newList
+			selectedSet = newSet
+			if (not multi) and #selected == 0 and #defs > 0 then
+				selected = { defs[1].Value }
+				selectedSet = { [defs[1].Value] = true }
+			end
+			updateFieldText()
+			rebuildRows()
+			if open then placePopup() end
+		end
+		self.SetOptions = function(_, list, keep) self:Refresh(list, keep) end
+		self.OptionCount = function() return #defs end
+		self.IsOpen = function() return open end
+		self.Open = function() setOpen(true) end
+		self.Close = function() setOpen(false) end
+		self.Destroy = function()
+			setOpen(false)
+			pcall(function() if popup and popup.Parent then popup:Destroy() end end)
+			pcall(function() if guard and guard.Parent then guard:Destroy() end end)
+			pcall(function() if box and box.Parent then box:Destroy() end end)
+		end
+		self.Row = holder
+
+		self.OptionBinds = function()
+			local t = {}
+			for _, d in ipairs(defs) do
+				local e = optionEntries[d.Value]
+				if e and e.Owner == marker and e.Keybind then
+					t[d.Value] = e.Keybind.Name
+				end
+			end
+			return t
+		end
+		self.BindOption = function(_, opStr, keyName)
+			local entry = optionEntries[opStr]
+			if entry and entry.Owner == marker then
+				local key = nil
+				if typeof(keyName) == "EnumItem" then
+					key = keyName
+				elseif type(keyName) == "string" and Enum.KeyCode[keyName] then
+					key = Enum.KeyCode[keyName]
+				end
+				entry:Bind(key)
+			end
+		end
+		self.OptionEntry = function(_, opStr) return optionEntries[opStr] end
+
+		local def = o.Default
+		local arr = {}
+		if type(def) == "table" then
+			for _, v in ipairs(def) do arr[#arr + 1] = v end
+		elseif def ~= nil then
+			arr[1] = def
+		end
+		local initArr = {}
+		for _, v in ipairs(arr) do
+			local s = tostring(v)
+			local d = defByValue(s)
+			if not d then
+				for _, dd in ipairs(defs) do if dd.Name == s then d = dd break end end
+			end
+			if d then initArr[#initArr + 1] = d.Value end
+		end
+		local cb = o.Callback
+		o.Callback = nil
+		setSelection(initArr, false)
+		o.Callback = cb
+
+		bindTheme(function()
+			if not holder.Parent then return end
+			ddNameLabel.TextColor3 = Theme.TextSoft
+			holder.BackgroundColor3 = Theme.Control
+			valueText.TextColor3 = (#selected == 0) and Theme.TextDim or Theme.TextSoft
+			chev.ImageColor3 = Theme.TextDim
+			popup.BackgroundColor3 = Theme.Background
+			popupStroke.Color = Theme.GroupStroke
+			listScroller.ScrollBarImageColor3 = Theme.Scrollbar
+			if searchFrame then
+				searchFrame.BackgroundColor3 = Theme.Control
+				if searchInput then searchInput.TextColor3 = Theme.Text end
+			end
+			emptyLabel.TextColor3 = Theme.TextDim
+			rebuildRows()
+		end)
+		return self
+	end
+	BuildDropdown = BuildMultiDropdown
+
 	local function BuildInput(parent, order, o)
 		o = o or {}
 		local value = o.Default or ""
@@ -3997,7 +4719,7 @@ end
 		end
 		function Module:AddDropdown(sub)
 			sub = gateSetting(sub)
-			return track("Dropdown", sub and sub.Name, BuildDropdown(settingsInner, registerControl(), sub))
+			return track("Dropdown", sub and sub.Name, BuildMultiDropdown(settingsInner, registerControl(), sub))
 		end
 		function Module:AddColorPick(sub)
 			sub = gateSetting(sub)

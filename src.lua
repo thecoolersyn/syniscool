@@ -1164,7 +1164,7 @@ function Library:CreateWindow(opts)
 	local titleLabel = New("TextLabel", {
 		Name = "Title",
 		Position = UDim2.new(0, 16, 0, 0),
-		Size = UDim2.new(1, -104, 1, 0),
+		Size = UDim2.new(0, 120, 1, 0),
 		BackgroundTransparency = 1,
 		Text = title,
 		Font = Enum.Font.GothamBold,

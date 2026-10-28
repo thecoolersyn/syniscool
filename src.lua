@@ -4433,8 +4433,9 @@ end
 	local function CreateModule(o, columnFrame, order)
 		o = o or {}
 		local Module = { Name = o.Name or "Module" }
+		Module.Favorited = false
 		local state = o.Default == true
-		local notifyOn = o.Notifications ~= false
+		local notifyOn = (o.Notifications ~= false) and (o.NotificationLock ~= true)
 		local manualOpen = false
 		local controlCount = 0
 		local resizeHooks = {}
@@ -4476,7 +4477,30 @@ end
 			TextTruncate = Enum.TextTruncate.AtEnd,
 			Parent = head,
 		})
-		local bellBtn = IconButton(head, 26)
+		Module.StarButton = New("TextButton", {
+		Name = "FavoriteStar",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -44, 0, 8),
+		Size = UDim2.fromOffset(26, 26),
+		BackgroundTransparency = 1,
+		Text = "★",
+		Font = Enum.Font.GothamBold,
+		TextSize = 14,
+		TextColor3 = Theme.TextDim,
+		AutoButtonColor = false,
+		BorderSizePixel = 0,
+		ZIndex = 7,
+		Parent = head,
+	})
+	Module.StarButton.MouseButton1Click:Connect(function()
+		Module.Favorited = not Module.Favorited
+		Module.StarButton.TextColor3 = Module.Favorited and Color3.fromRGB(255, 215, 0) or Theme.TextDim
+	end)
+	bindTheme(function()
+		if not (Module.StarButton and Module.StarButton.Parent) then return end
+		if not Module.Favorited then Module.StarButton.TextColor3 = Theme.TextDim end
+	end)
+local bellBtn = IconButton(head, 26)
 		bellBtn.Name = "Bell"
 		bellBtn.AnchorPoint = Vector2.new(1, 0)
 		bellBtn.Position = UDim2.new(1, -12, 0, 8)
@@ -5421,7 +5445,26 @@ function Window:AddTab(tabOpts)
 		end)
 		return lbl
 	end
-	local gearBtn = IconButton(Header, 28, 7)
+	New("TextButton", {
+		Name = "Discord",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -84, 0.5, 0),
+		Size = UDim2.fromOffset(28, 28),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		BorderSizePixel = 0,
+		ZIndex = 7,
+		Parent = Header,
+	}).MouseButton1Click:Connect(function()
+		local ok = false
+		pcall(function()
+			if type(setclipboard) == "function" then setclipboard("https://discord.gg/h7vdy52DXD") ok = true
+			elseif type(toclipboard) == "function" then toclipboard("https://discord.gg/h7vdy52DXD") ok = true end
+		end)
+		if activeWindow then activeWindow:Notify({ Title = "Norepine", Text = ok and "Discord copied to clipboard" or "Clipboard not supported", Duration = 3 }) end
+	end)
+local gearBtn = IconButton(Header, 28, 7)
 	gearBtn.Name = "SettingsGear"
 	gearBtn.AnchorPoint = Vector2.new(1, 0.5)
 	gearBtn.Position = UDim2.new(1, -48, 0.5, 0)

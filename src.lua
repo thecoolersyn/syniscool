@@ -5575,7 +5575,7 @@ Window._searchBox = New("TextBox", {
 Window._discordUrl = nil
 	pcall(function()
 		if type(getcustomasset) == "function" then
-			Window._discordUrl = getcustomasset("Norepine/Assets/discord.jpg")
+			Window._discordUrl = getcustomasset("Norepine/Assets/discord.png")
 		end
 	end)
 	Window._discordBtn = New("TextButton", {
@@ -5583,8 +5583,7 @@ Window._discordUrl = nil
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 140, 0.5, 0),
 		Size = UDim2.fromOffset(28, 28),
-		BackgroundColor3 = Color3.fromRGB(88, 101, 242),
-		BackgroundTransparency = 0,
+		BackgroundTransparency = 1,
 		Text = Window._discordUrl and "" or "D",
 		Font = Enum.Font.GothamBold,
 		TextSize = 16,

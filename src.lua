@@ -1163,7 +1163,7 @@ function Library:CreateWindow(opts)
 	})
 	local titleLabel = New("TextLabel", {
 		Name = "Title",
-		Position = UDim2.new(1, -140, 0, 0),
+		Position = UDim2.new(0, 16, 0, 0),
 		Size = UDim2.new(0, 120, 1, 0),
 		BackgroundTransparency = 1,
 		Text = title,
@@ -5464,8 +5464,8 @@ function Window:AddTab(tabOpts)
 	end
 	Window._discordBtn = New("TextButton", {
 		Name = "Discord",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -84, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 140, 0.5, 0),
 		Size = UDim2.fromOffset(28, 28),
 		BackgroundTransparency = 1,
 		Text = "",
@@ -5479,7 +5479,7 @@ function Window:AddTab(tabOpts)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, 0),
 		BackgroundTransparency = 1,
-		Image = "rbxassetid://7029437698",
+		Image = "rbxassetid://18505728250",
 		ImageColor3 = Theme.TextDim,
 		ScaleType = Enum.ScaleType.Fit,
 		Parent = Window._discordBtn,
@@ -5591,8 +5591,8 @@ Window._searchBox = New("TextBox", {
 	end)
 New("TextButton", {
 		Name = "FavoritesStar",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.5, 0),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -84, 0.5, 0),
 		Size = UDim2.fromOffset(28, 28),
 		BackgroundTransparency = 1,
 		Text = "★",
@@ -5679,8 +5679,8 @@ New("TextButton", {
 	end)
 local gearBtn = IconButton(Header, 28, 7)
 	gearBtn.Name = "SettingsGear"
-	gearBtn.AnchorPoint = Vector2.new(0, 0.5)
-	gearBtn.Position = UDim2.new(0, 48, 0.5, 0)
+	gearBtn.AnchorPoint = Vector2.new(1, 0.5)
+	gearBtn.Position = UDim2.new(1, -48, 0.5, 0)
 	gearBtn.ZIndex = 7
 	local gearIcon = MakeIcon(gearBtn, "cog", 17, Theme.TextDim)
 	gearIcon.AnchorPoint = Vector2.new(0.5, 0.5)

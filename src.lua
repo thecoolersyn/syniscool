@@ -4415,6 +4415,7 @@ end
 		o = o or {}
 		local Module = { Name = o.Name or "Module" }
 		Module.Favorited = false
+		Module.Tab = nil
 		local state = o.Default == true
 		local notifyOn = (o.Notifications ~= false) and (o.NotificationLock ~= true)
 		local manualOpen = false
@@ -4476,6 +4477,41 @@ end
 	Module.StarButton.MouseButton1Click:Connect(function()
 		Module.Favorited = not Module.Favorited
 		Module.StarButton.TextColor3 = Module.Favorited and Color3.fromRGB(255, 215, 0) or Theme.TextDim
+		-- ensure favorites tab
+		if not Window._favTab then
+			Window._favTab = Window:AddTab({ Name = "Favorited Modules", Icon = "star" })
+			local m = Window._favTab:AddModule({ Name = "Favorited Modules" })
+			Window._favColumn = m:GetCard().Parent
+			Window._favEmpty = New("TextLabel", {
+				Size = UDim2.new(1, 0, 0, 24),
+				BackgroundTransparency = 1,
+				Text = "No favorited modules yet",
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 12,
+				TextColor3 = Theme.TextDim,
+				Parent = Window._favColumn,
+			})
+		end
+		local card = Module.GetCard and Module:GetCard()
+		if not card then return end
+		if Module.Favorited then
+			if card.Parent ~= Window._favColumn then
+				Module._favOrigParent = card.Parent
+				card.Parent = Window._favColumn
+			end
+			if Window._favEmpty then Window._favEmpty.Visible = false end
+		else
+			if Module._favOrigParent and Module._favOrigParent.Parent then
+				card.Parent = Module._favOrigParent
+			end
+			local anyFav = false
+			for _, mm in ipairs(modules) do
+				if mm.Favorited then anyFav = true break end
+			end
+			if not anyFav and Window._favEmpty then
+				Window._favEmpty.Visible = true
+			end
+		end
 	end)
 	bindTheme(function()
 		if not (Module.StarButton and Module.StarButton.Parent) then return end
@@ -5134,6 +5170,7 @@ function Window:AddTab(tabOpts)
 			local column = pickColumn(mOpts.Column)
 			colCount[column] += 1
 			local mod = CreateModule(mOpts, column, colCount[column])
+			mod.Tab = Tab
 			local last = mod:GetHeight()
 			colHeight[column] += last
 			mod:OnResize(function(h)
@@ -5444,6 +5481,103 @@ function Window:AddTab(tabOpts)
 			elseif type(toclipboard) == "function" then toclipboard("https://discord.gg/h7vdy52DXD") ok = true end
 		end)
 		if activeWindow then activeWindow:Notify({ Title = "Norepine", Text = ok and "Discord copied to clipboard" or "Clipboard not supported", Duration = 3 }) end
+	end)
+Window._searchBox = New("TextBox", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.fromOffset(200, 24),
+		BackgroundColor3 = Theme.Control,
+		Text = "",
+		PlaceholderText = "Search for a module...",
+		FontFace = FONT_SEMIBOLD,
+		TextSize = 13,
+		TextColor3 = Theme.Text,
+		ClearTextOnFocus = false,
+		BorderSizePixel = 0,
+		ZIndex = 8,
+		Parent = Header,
+	})
+	Corner(Window._searchBox, 7)
+	Pad(Window._searchBox, 0, 0, 8, 8)
+	Window._searchResults = New("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 4),
+		Size = UDim2.fromOffset(200, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Theme.Background,
+		BackgroundTransparency = 0.05,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 50,
+		Parent = Header,
+	})
+	Corner(Window._searchResults, 7)
+	Stroke(Window._searchResults, Theme.GroupStroke, 0)
+	New("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = Window._searchResults })
+	Window._searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		local sb = Window._searchBox
+		local rf = Window._searchResults
+		for _, ch in ipairs(rf:GetChildren()) do
+			if ch:IsA("TextButton") then ch:Destroy() end
+		end
+		local q = string.lower(sb.Text or "")
+		if q == "" then rf.Visible = false return end
+		local found = 0
+		for _, m in ipairs(modules) do
+			if string.find(string.lower(m.Name or ""), q, 1, true) then
+				found = found + 1
+				local btn = New("TextButton", {
+					Size = UDim2.new(1, 0, 0, 22),
+					BackgroundTransparency = 1,
+					Text = m.Name,
+					FontFace = FONT_SEMIBOLD,
+					TextSize = 12,
+					TextColor3 = Theme.TextSoft,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					AutoButtonColor = false,
+					ZIndex = 51,
+					Parent = rf,
+				})
+				Pad(btn, 0, 0, 8, 8)
+				btn.MouseButton1Click:Connect(function()
+					rf.Visible = false
+					sb.Text = ""
+					local tab = m.Tab
+					if tab and tab.Select then tab:Select() end
+					task.defer(function()
+						local card = m.GetCard and m:GetCard()
+						local scroller = tab and tab.Scroller
+						if card and scroller then
+							local y = card.AbsolutePosition.Y - scroller.AbsolutePosition.Y + scroller.CanvasPosition.Y
+							local maxScroll = math.max(0, scroller.CanvasSize.Y.Offset - scroller.AbsoluteSize.Y)
+							scroller.CanvasPosition = Vector2.new(0, math.clamp(y, 0, maxScroll))
+						end
+					end)
+				end)
+			end
+		end
+		if found == 0 then
+			New("TextLabel", {
+				Size = UDim2.new(1, 0, 0, 22),
+				BackgroundTransparency = 1,
+				Text = "No modules found",
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 12,
+				TextColor3 = Theme.TextDim,
+				ZIndex = 51,
+				Parent = rf,
+			})
+		end
+		rf.Visible = true
+	end)
+	bindTheme(function()
+		if Window._searchBox and Window._searchBox.Parent then
+			Window._searchBox.BackgroundColor3 = Theme.Control
+			Window._searchBox.TextColor3 = Theme.Text
+		end
+		if Window._searchResults and Window._searchResults.Parent then
+			Window._searchResults.BackgroundColor3 = Theme.Background
+		end
 	end)
 local gearBtn = IconButton(Header, 28, 7)
 	gearBtn.Name = "SettingsGear"

@@ -5575,7 +5575,7 @@ Window._searchBox = New("TextBox", {
 Window._discordUrl = nil
 	pcall(function()
 		if type(getcustomasset) == "function" then
-			Window._discordUrl = getcustomasset("Norepine/Assets/discord.png")
+			Window._discordUrl = getcustomasset("Norepine/Assets/discord.jpg")
 		end
 	end)
 	Window._discordBtn = New("TextButton", {

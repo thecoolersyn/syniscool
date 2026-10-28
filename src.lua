@@ -1045,11 +1045,7 @@ function Library:CreateWindow(opts)
 			navH = #tabs * tabH + math.max(0, #tabs - 1) * tabGap + navPad
 			if navH < (tabH + navPad) then navH = tabH + navPad end
 		end
-		local tl = nil
-		pcall(function()
-			local sf = Dock:FindFirstChild("Tabs")
-			if sf then tl = sf:FindFirstChildOfClass("UIListLayout") end
-		end)
+		local tl = Window and Window._tabListLayout
 		if tl then
 			if #tabs <= MAX_VISIBLE_TABS then
 				tl.VerticalAlignment = Enum.VerticalAlignment.Center
@@ -1122,7 +1118,7 @@ function Library:CreateWindow(opts)
 		BackgroundTransparency = 1,
 		Parent = Dock,
 	})
-	Pad(Sidebar, 2, 2, 8, 8)
+	Pad(Sidebar, 0, 0, 8, 8)
 	local tabScroller = New("ScrollingFrame", {
 		Name = "Tabs",
 		Size = UDim2.new(1, 0, 1, 0),
@@ -1139,7 +1135,7 @@ function Library:CreateWindow(opts)
 	bindTheme(function()
 		tabScroller.ScrollBarImageColor3 = Theme.Scrollbar
 	end)
-	New("UIListLayout", {
+	Window._tabListLayout = New("UIListLayout", {
 		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,

@@ -1045,7 +1045,11 @@ function Library:CreateWindow(opts)
 			navH = #tabs * tabH + math.max(0, #tabs - 1) * tabGap + navPad
 			if navH < (tabH + navPad) then navH = tabH + navPad end
 		end
-		local tl = Window and Window._tabListLayout
+		local tl = nil
+		pcall(function()
+			local sf = Dock:FindFirstChild("Tabs")
+			if sf then tl = sf:FindFirstChildOfClass("UIListLayout") end
+		end)
 		if tl then
 			if #tabs <= MAX_VISIBLE_TABS then
 				tl.VerticalAlignment = Enum.VerticalAlignment.Center
@@ -1135,7 +1139,7 @@ function Library:CreateWindow(opts)
 	bindTheme(function()
 		tabScroller.ScrollBarImageColor3 = Theme.Scrollbar
 	end)
-	Window._tabListLayout = New("UIListLayout", {
+	New("UIListLayout", {
 		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -5471,14 +5475,117 @@ function Window:AddTab(tabOpts)
 		end)
 		return lbl
 	end
-Window._discordBtn = New("TextButton", {
+Window._searchBox = New("TextBox", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.fromOffset(200, 24),
+		BackgroundColor3 = Theme.Control,
+		Text = "",
+		PlaceholderText = "Search for a module...",
+		FontFace = FONT_SEMIBOLD,
+		TextSize = 13,
+		TextColor3 = Theme.Text,
+		ClearTextOnFocus = false,
+		BorderSizePixel = 0,
+		ZIndex = 8,
+		Parent = Header,
+	})
+	Corner(Window._searchBox, 7)
+	Pad(Window._searchBox, 0, 0, 8, 8)
+	Window._searchResults = New("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 4),
+		Size = UDim2.fromOffset(200, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Theme.Background,
+		BackgroundTransparency = 0.05,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 50,
+		Parent = Header,
+	})
+	Corner(Window._searchResults, 7)
+	Stroke(Window._searchResults, Theme.GroupStroke, 0)
+	New("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder, Parent = Window._searchResults })
+	Window._searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		local sb = Window._searchBox
+		local rf = Window._searchResults
+		for _, ch in ipairs(rf:GetChildren()) do
+			if ch:IsA("TextButton") then ch:Destroy() end
+		end
+		local q = string.lower(sb.Text or "")
+		if q == "" then rf.Visible = false return end
+		local found = 0
+		for _, m in ipairs(modules) do
+			if string.find(string.lower(m.Name or ""), q, 1, true) then
+				found = found + 1
+				local btn = New("TextButton", {
+					Size = UDim2.new(1, 0, 0, 22),
+					BackgroundTransparency = 1,
+					Text = m.Name,
+					FontFace = FONT_SEMIBOLD,
+					TextSize = 12,
+					TextColor3 = Theme.TextSoft,
+					TextXAlignment = Enum.TextXAlignment.Left,
+					AutoButtonColor = false,
+					ZIndex = 51,
+					Parent = rf,
+				})
+				Pad(btn, 0, 0, 8, 8)
+				btn.MouseButton1Click:Connect(function()
+					rf.Visible = false
+					sb.Text = ""
+					local tab = m.Tab
+					if tab and tab.Select then tab:Select() end
+					task.defer(function()
+						local card = m.GetCard and m:GetCard()
+						local scroller = tab and tab.Scroller
+						if card and scroller then
+							local y = card.AbsolutePosition.Y - scroller.AbsolutePosition.Y + scroller.CanvasPosition.Y
+							local maxScroll = math.max(0, scroller.CanvasSize.Y.Offset - scroller.AbsoluteSize.Y)
+							scroller.CanvasPosition = Vector2.new(0, math.clamp(y, 0, maxScroll))
+						end
+					end)
+				end)
+			end
+		end
+		if found == 0 then
+			New("TextLabel", {
+				Size = UDim2.new(1, 0, 0, 22),
+				BackgroundTransparency = 1,
+				Text = "No modules found",
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 12,
+				TextColor3 = Theme.TextDim,
+				ZIndex = 51,
+				Parent = rf,
+			})
+		end
+		rf.Visible = true
+	end)
+	bindTheme(function()
+		if Window._searchBox and Window._searchBox.Parent then
+			Window._searchBox.BackgroundColor3 = Theme.Control
+			Window._searchBox.TextColor3 = Theme.Text
+		end
+		if Window._searchResults and Window._searchResults.Parent then
+			Window._searchResults.BackgroundColor3 = Theme.Background
+		end
+	end)
+Window._discordUrl = nil
+	pcall(function()
+		if type(getcustomasset) == "function" then
+			Window._discordUrl = getcustomasset("Norepine/Assets/discord.png")
+		end
+	end)
+	Window._discordBtn = New("TextButton", {
 		Name = "Discord",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 140, 0.5, 0),
 		Size = UDim2.fromOffset(28, 28),
 		BackgroundColor3 = Color3.fromRGB(88, 101, 242),
 		BackgroundTransparency = 0,
-		Text = "D",
+		Text = Window._discordUrl and "" or "D",
 		Font = Enum.Font.GothamBold,
 		TextSize = 16,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
@@ -5488,6 +5595,18 @@ Window._discordBtn = New("TextButton", {
 		Parent = Header,
 	})
 	Corner(Window._discordBtn, 7)
+	if Window._discordUrl then
+		New("ImageLabel", {
+			Size = UDim2.fromOffset(20, 20),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			BackgroundTransparency = 1,
+			Image = Window._discordUrl,
+			ImageColor3 = Color3.fromRGB(255, 255, 255),
+			ScaleType = Enum.ScaleType.Fit,
+			Parent = Window._discordBtn,
+		})
+	end
 	Window._discordBtn.MouseButton1Click:Connect(function()
 		local ok = false
 		pcall(function()

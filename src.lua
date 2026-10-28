@@ -5010,8 +5010,21 @@ local bellBtn = IconButton(head, 26)
 		if tab and tab.Button and tabScroller then
 			task.defer(function()
 				if not (tab.Button.Parent and tabScroller.Parent) then return end
-				local btnY = tab.Button.AbsolutePosition.Y - tabScroller.AbsolutePosition.Y + tabScroller.CanvasPosition.Y
-				local target = btnY - (tabScroller.AbsoluteSize.Y - tab.Button.AbsoluteSize.Y) / 2
+				local btnTop = tab.Button.AbsolutePosition.Y
+				local btnBottom = btnTop + tab.Button.AbsoluteSize.Y
+				local viewTop = tabScroller.AbsolutePosition.Y
+				local viewBottom = viewTop + tabScroller.AbsoluteSize.Y
+				if btnTop >= viewTop and btnBottom <= viewBottom then
+					return -- already visible
+				end
+				local currentY = tabScroller.CanvasPosition.Y
+				local btnY = tab.Button.AbsolutePosition.Y - tabScroller.AbsolutePosition.Y + currentY
+				local target = currentY
+				if btnTop < viewTop then
+					target = btnY - 2 -- align top with small padding
+				elseif btnBottom > viewBottom then
+					target = btnY - tabScroller.AbsoluteSize.Y + tab.Button.AbsoluteSize.Y + 2
+				end
 				local maxScroll = math.max(0, tabScroller.CanvasSize.Y.Offset - tabScroller.AbsoluteSize.Y)
 				if target < 0 then target = 0 end
 				if target > maxScroll then target = maxScroll end

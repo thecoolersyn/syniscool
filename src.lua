@@ -1122,7 +1122,7 @@ function Library:CreateWindow(opts)
 		BackgroundTransparency = 1,
 		Parent = Dock,
 	})
-	Pad(Sidebar, 2, 6, 8, 8)
+	Pad(Sidebar, 2, 2, 8, 8)
 	local tabScroller = New("ScrollingFrame", {
 		Name = "Tabs",
 		Size = UDim2.new(1, 0, 1, 0),

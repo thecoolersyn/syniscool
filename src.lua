@@ -5579,6 +5579,40 @@ Window._searchBox = New("TextBox", {
 			Window._searchResults.BackgroundColor3 = Theme.Background
 		end
 	end)
+New("TextButton", {
+		Name = "FavoritesStar",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -120, 0.5, 0),
+		Size = UDim2.fromOffset(28, 28),
+		BackgroundTransparency = 1,
+		Text = "★",
+		Font = Enum.Font.GothamBold,
+		TextSize = 16,
+		TextColor3 = Color3.fromRGB(255, 215, 0),
+		AutoButtonColor = false,
+		BorderSizePixel = 0,
+		ZIndex = 7,
+		Parent = Header,
+	}).MouseButton1Click:Connect(function()
+		if Window and Window._favTab and Window._favTab.Select then
+			Window._favTab:Select()
+		elseif Window then
+			-- create
+			Window._favTab = Window:AddTab({ Name = "Favorited Modules", Icon = "star" })
+			local m = Window._favTab:AddModule({ Name = "Favorited Modules" })
+			Window._favColumn = m:GetCard().Parent
+			Window._favEmpty = New("TextLabel", {
+				Size = UDim2.new(1, 0, 0, 24),
+				BackgroundTransparency = 1,
+				Text = "No favorited modules yet",
+				FontFace = FONT_SEMIBOLD,
+				TextSize = 12,
+				TextColor3 = Theme.TextDim,
+				Parent = Window._favColumn,
+			})
+			Window._favTab:Select()
+		end
+	end)
 local gearBtn = IconButton(Header, 28, 7)
 	gearBtn.Name = "SettingsGear"
 	gearBtn.AnchorPoint = Vector2.new(1, 0.5)

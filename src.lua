@@ -4477,40 +4477,25 @@ end
 	Module.StarButton.MouseButton1Click:Connect(function()
 		Module.Favorited = not Module.Favorited
 		Module.StarButton.TextColor3 = Module.Favorited and Color3.fromRGB(255, 215, 0) or Theme.TextDim
-		-- ensure favorites tab
-		if not Window._favTab then
-			Window._favTab = Window:AddTab({ Name = "Favorited Modules", Icon = "star" })
-			local m = Window._favTab:AddModule({ Name = "Favorited Modules" })
-			Window._favColumn = m:GetCard().Parent
-			Window._favEmpty = New("TextLabel", {
-				Size = UDim2.new(1, 0, 0, 24),
-				BackgroundTransparency = 1,
-				Text = "No favorited modules yet",
-				FontFace = FONT_SEMIBOLD,
-				TextSize = 12,
-				TextColor3 = Theme.TextDim,
-				Parent = Window._favColumn,
-			})
-		end
-		local card = Module.GetCard and Module:GetCard()
-		if not card then return end
-		if Module.Favorited then
-			if card.Parent ~= Window._favColumn then
-				Module._favOrigParent = card.Parent
-				card.Parent = Window._favColumn
-			end
-			if Window._favEmpty then Window._favEmpty.Visible = false end
-		else
-			if Module._favOrigParent and Module._favOrigParent.Parent then
-				card.Parent = Module._favOrigParent
+		-- update favorites view if open
+		if Window._favMode and Window._favContainer then
+			local card = Module.GetCard and Module:GetCard()
+			if card then
+				if Module.Favorited then
+					if card.Parent ~= Window._favContainer then
+						Module._favOrigParent = card.Parent
+						card.Parent = Window._favContainer
+					end
+				else
+					if Module._favOrigParent and Module._favOrigParent.Parent then
+						card.Parent = Module._favOrigParent
+						Module._favOrigParent = nil
+					end
+				end
 			end
 			local anyFav = false
-			for _, mm in ipairs(modules) do
-				if mm.Favorited then anyFav = true break end
-			end
-			if not anyFav and Window._favEmpty then
-				Window._favEmpty.Visible = true
-			end
+			for _, mm in ipairs(modules) do if mm.Favorited then anyFav = true break end end
+			if Window._favEmpty then Window._favEmpty.Visible = not anyFav end
 		end
 	end)
 	bindTheme(function()
@@ -5463,7 +5448,7 @@ function Window:AddTab(tabOpts)
 		end)
 		return lbl
 	end
-	New("TextButton", {
+	Window._discordBtn = New("TextButton", {
 		Name = "Discord",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -84, 0.5, 0),
@@ -5474,7 +5459,18 @@ function Window:AddTab(tabOpts)
 		BorderSizePixel = 0,
 		ZIndex = 7,
 		Parent = Header,
-	}).MouseButton1Click:Connect(function()
+	})
+	New("ImageLabel", {
+		Size = UDim2.fromOffset(20, 20),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://7029437698",
+		ImageColor3 = Theme.TextDim,
+		ScaleType = Enum.ScaleType.Fit,
+		Parent = Window._discordBtn,
+	})
+	Window._discordBtn.MouseButton1Click:Connect(function()
 		local ok = false
 		pcall(function()
 			if type(setclipboard) == "function" then setclipboard("https://discord.gg/h7vdy52DXD") ok = true
@@ -5587,30 +5583,81 @@ New("TextButton", {
 		BackgroundTransparency = 1,
 		Text = "★",
 		Font = Enum.Font.GothamBold,
-		TextSize = 16,
+		TextSize = 18,
 		TextColor3 = Color3.fromRGB(255, 215, 0),
 		AutoButtonColor = false,
 		BorderSizePixel = 0,
 		ZIndex = 7,
 		Parent = Header,
 	}).MouseButton1Click:Connect(function()
-		if Window and Window._favTab and Window._favTab.Select then
-			Window._favTab:Select()
-		elseif Window then
-			-- create
-			Window._favTab = Window:AddTab({ Name = "Favorited Modules", Icon = "star" })
-			local m = Window._favTab:AddModule({ Name = "Favorited Modules" })
-			Window._favColumn = m:GetCard().Parent
+		-- toggle favorites view
+		if not Window._favContainer then
+			Window._favContainer = New("ScrollingFrame", {
+				Name = "FavoritesContainer",
+				Size = UDim2.new(1, 0, 1, 0),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				CanvasSize = UDim2.new(0, 0, 0, 0),
+				AutomaticCanvasSize = Enum.AutomaticSize.Y,
+				ScrollingDirection = Enum.ScrollingDirection.Y,
+				ScrollBarThickness = 4,
+				ScrollBarImageColor3 = Theme.Scrollbar,
+				Visible = false,
+				Parent = Content,
+			})
+			Window._favLayout = New("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = Window._favContainer })
+			Pad(Window._favContainer, 0, 0, 0, 4)
 			Window._favEmpty = New("TextLabel", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.5, 0, 0.5, 0),
 				Size = UDim2.new(1, 0, 0, 24),
 				BackgroundTransparency = 1,
-				Text = "No favorited modules yet",
+				Text = "No modules saved yet :c",
 				FontFace = FONT_SEMIBOLD,
-				TextSize = 12,
+				TextSize = 14,
 				TextColor3 = Theme.TextDim,
-				Parent = Window._favColumn,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				Visible = false,
+				ZIndex = 10,
+				Parent = Window._favContainer,
 			})
-			Window._favTab:Select()
+		end
+		Window._favMode = not (Window._favMode == true)
+		local container = Window._favContainer
+		if Window._favMode then
+			Window._favPrevTab = currentTab
+			for _, t in ipairs(tabs) do
+				if t.Page then t.Page.Visible = false end
+			end
+			container.Visible = true
+			-- reparent favorited cards
+			local anyFav = false
+			for _, m in ipairs(modules) do
+				if m.Favorited then
+					anyFav = true
+					local card = m.GetCard and m:GetCard()
+					if card and card.Parent ~= container then
+						m._favOrigParent = card.Parent
+						card.Parent = container
+					end
+				end
+			end
+			if Window._favEmpty then Window._favEmpty.Visible = not anyFav end
+		else
+			-- restore
+			for _, m in ipairs(modules) do
+				if m._favOrigParent and m._favOrigParent.Parent then
+					local card = m.GetCard and m:GetCard()
+					if card then card.Parent = m._favOrigParent end
+					m._favOrigParent = nil
+				end
+			end
+			container.Visible = false
+			if Window._favPrevTab and Window._favPrevTab.Select then
+				Window._favPrevTab:Select()
+			elseif tabs[1] and tabs[1].Select then
+				tabs[1]:Select()
+			end
 		end
 	end)
 local gearBtn = IconButton(Header, 28, 7)

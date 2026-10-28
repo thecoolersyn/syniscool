@@ -1163,7 +1163,7 @@ function Library:CreateWindow(opts)
 	})
 	local titleLabel = New("TextLabel", {
 		Name = "Title",
-		Position = UDim2.new(0, 16, 0, 0),
+		Position = UDim2.new(1, -140, 0, 0),
 		Size = UDim2.new(0, 120, 1, 0),
 		BackgroundTransparency = 1,
 		Text = title,
@@ -4959,6 +4959,20 @@ local bellBtn = IconButton(head, 26)
 		return Module
 	end
 	local function selectTab(tab, instant)
+		if Window and Window._favMode then
+			Window._favMode = false
+			local container = Window._favContainer
+			if container then
+				for _, m in ipairs(modules) do
+					if m._favOrigParent and m._favOrigParent.Parent then
+						local card = m.GetCard and m:GetCard()
+						if card then card.Parent = m._favOrigParent end
+						m._favOrigParent = nil
+					end
+				end
+				container.Visible = false
+			end
+		end
 		local previous = currentTab
 		currentTab = tab
 		dividerLabel.Text = tab and ("[ " .. tab.Name .. " ]") or ""
@@ -5577,8 +5591,8 @@ Window._searchBox = New("TextBox", {
 	end)
 New("TextButton", {
 		Name = "FavoritesStar",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -120, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 12, 0.5, 0),
 		Size = UDim2.fromOffset(28, 28),
 		BackgroundTransparency = 1,
 		Text = "★",
@@ -5626,6 +5640,7 @@ New("TextButton", {
 		local container = Window._favContainer
 		if Window._favMode then
 			Window._favPrevTab = currentTab
+			dividerLabel.Text = "[ Favorited ]"
 			for _, t in ipairs(tabs) do
 				if t.Page then t.Page.Visible = false end
 			end
@@ -5654,16 +5669,18 @@ New("TextButton", {
 			end
 			container.Visible = false
 			if Window._favPrevTab and Window._favPrevTab.Select then
+				dividerLabel.Text = Window._favPrevTab and ("[ " .. Window._favPrevTab.Name .. " ]") or ""
 				Window._favPrevTab:Select()
 			elseif tabs[1] and tabs[1].Select then
+				dividerLabel.Text = tabs[1] and ("[ " .. tabs[1].Name .. " ]") or ""
 				tabs[1]:Select()
 			end
 		end
 	end)
 local gearBtn = IconButton(Header, 28, 7)
 	gearBtn.Name = "SettingsGear"
-	gearBtn.AnchorPoint = Vector2.new(1, 0.5)
-	gearBtn.Position = UDim2.new(1, -48, 0.5, 0)
+	gearBtn.AnchorPoint = Vector2.new(0, 0.5)
+	gearBtn.Position = UDim2.new(0, 48, 0.5, 0)
 	gearBtn.ZIndex = 7
 	local gearIcon = MakeIcon(gearBtn, "cog", 17, Theme.TextDim)
 	gearIcon.AnchorPoint = Vector2.new(0.5, 0.5)

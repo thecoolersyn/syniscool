@@ -60,8 +60,11 @@ movSec:AddButton({
 	end,
 })
 
-Window:AddTab({ Name = "Detections", Section = "Combat" })
-	:AddSection({ Name = "Staff Detection" })
+for i = 1, 6 do
+	local t = Window:AddTab({ Name = "Guard Test " .. i, Icon = "list" })
+	local sec = t:AddSection({ Name = "Guard Test " .. i })
+	sec:AddLabel({ Text = "Content marker for Guard Test " .. i })
+end
 Window:AddTab({ Name = "Misc", Section = "Combat" })
 	:AddSection({ Name = "Extra" })
 

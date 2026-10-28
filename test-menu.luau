@@ -69,6 +69,8 @@ Window:AddTab({ Name = "Main", Icon = "camera", Section = "Visuals" })
 	:AddSection({ Name = "ESP" })
 Window:AddTab({ Name = "Main", Icon = "skull", Section = "Exclusive" })
 	:AddSection({ Name = "Identity Hider" })
+Window:AddTab({ Name = "Main", Icon = "combat", Section = "Exclusive" })
+	:AddSection({ Name = "Identity Hider" })
 
 local slowEntry = modeDd.OptionEntry and modeDd:OptionEntry("Slow")
 if slowEntry and slowEntry.Bind then

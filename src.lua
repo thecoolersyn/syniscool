@@ -1033,7 +1033,30 @@ function Library:CreateWindow(opts)
 		end
 		-- height hugs content (logo + nav buttons + profile), centered on the main window
 		-- and clamped to the available viewport; the nav scroller absorbs any overflow
-		local navH = #tabs * 34 + math.max(0, #tabs - 1) * 4 + 8
+		local MAX_VISIBLE_TABS = 6
+		local tabH = 34
+		local tabGap = 4
+		local navPad = 8
+		local visibleTabs = math.min(#tabs, MAX_VISIBLE_TABS)
+		if visibleTabs < 1 then visibleTabs = 1 end
+		local navH = visibleTabs * tabH + (visibleTabs - 1) * tabGap + navPad
+		if #tabs <= MAX_VISIBLE_TABS then
+			-- hug content
+			navH = #tabs * tabH + math.max(0, #tabs - 1) * tabGap + navPad
+			if navH < (tabH + navPad) then navH = tabH + navPad end
+		end
+		local tl = nil
+		pcall(function()
+			local sf = Dock:FindFirstChild("Tabs")
+			if sf then tl = sf:FindFirstChildOfClass("UIListLayout") end
+		end)
+		if tl then
+			if #tabs <= MAX_VISIBLE_TABS then
+				tl.VerticalAlignment = Enum.VerticalAlignment.Center
+			else
+				tl.VerticalAlignment = Enum.VerticalAlignment.Top
+			end
+		end
 		local desiredH = DOCK.LOGO_H + navH + DOCK.PROFILE_H
 		local maxH = mh
 		pcall(function()
@@ -1050,9 +1073,28 @@ function Library:CreateWindow(opts)
 			Main.Position.Y.Offset - dockH / 2
 		)
 		Dock.Size = UDim2.fromOffset(DOCK.W, dockH)
+		pcall(function()
+			local cam = workspace.CurrentCamera
+			if cam and cam.ViewportSize.X > 0 and cam.ViewportSize.Y > 0 then
+				local vp = cam.ViewportSize
+				local targetW = (size.X.Offset > 0) and size.X.Offset or 700
+				local targetH = (size.Y.Offset > 0) and size.Y.Offset or 460
+				local neededW = targetW + DOCK.W + DOCK.GAP
+				local sx = vp.X / neededW
+				local sy = vp.Y / targetH
+				local s = math.min(sx, sy, 1) * 0.96
+				if s < 0.5 then s = 0.5 end
+				if uiScale then uiScale.Scale = s end
+				if dockScale then dockScale.Scale = s end
+			end
+		end)
 	end
 	syncDockPosition()
 	Connect(Main:GetPropertyChangedSignal("Position"), syncDockPosition)
+	pcall(function()
+		local cam = workspace.CurrentCamera
+		if cam then Connect(cam:GetPropertyChangedSignal("ViewportSize"), syncDockPosition) end
+	end)
 	do
 		local logoIcon
 		if logoUrl then
@@ -4924,8 +4966,20 @@ end
 				end
 			end
 		end
+		-- scroll active tab into view
+		if tab and tab.Button and tabScroller then
+			task.defer(function()
+				if not (tab.Button.Parent and tabScroller.Parent) then return end
+				local btnY = tab.Button.AbsolutePosition.Y - tabScroller.AbsolutePosition.Y + tabScroller.CanvasPosition.Y
+				local target = btnY - (tabScroller.AbsoluteSize.Y - tab.Button.AbsoluteSize.Y) / 2
+				local maxScroll = math.max(0, tabScroller.CanvasSize.Y.Offset - tabScroller.AbsoluteSize.Y)
+				if target < 0 then target = 0 end
+				if target > maxScroll then target = maxScroll end
+				tabScroller.CanvasPosition = Vector2.new(0, target)
+			end)
+		end
 	end
-	function Window:AddTab(tabOpts)
+function Window:AddTab(tabOpts)
 		tabOpts = tabOpts or {}
 		sidebarOrder += 1
 		local Tab = { Name = tabOpts.Name or "Tab" }

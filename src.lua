@@ -1073,28 +1073,9 @@ function Library:CreateWindow(opts)
 			Main.Position.Y.Offset - dockH / 2
 		)
 		Dock.Size = UDim2.fromOffset(DOCK.W, dockH)
-		pcall(function()
-			local cam = workspace.CurrentCamera
-			if cam and cam.ViewportSize.X > 0 and cam.ViewportSize.Y > 0 then
-				local vp = cam.ViewportSize
-				local targetW = (size.X.Offset > 0) and size.X.Offset or 700
-				local targetH = (size.Y.Offset > 0) and size.Y.Offset or 460
-				local neededW = targetW + DOCK.W + DOCK.GAP
-				local sx = vp.X / neededW
-				local sy = vp.Y / targetH
-				local s = math.min(sx, sy, 1) * 0.96
-				if s < 0.5 then s = 0.5 end
-				if uiScale then uiScale.Scale = s end
-				if dockScale then dockScale.Scale = s end
-			end
-		end)
 	end
 	syncDockPosition()
 	Connect(Main:GetPropertyChangedSignal("Position"), syncDockPosition)
-	pcall(function()
-		local cam = workspace.CurrentCamera
-		if cam then Connect(cam:GetPropertyChangedSignal("ViewportSize"), syncDockPosition) end
-	end)
 	do
 		local logoIcon
 		if logoUrl then

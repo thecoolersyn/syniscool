@@ -5462,28 +5462,23 @@ function Window:AddTab(tabOpts)
 		end)
 		return lbl
 	end
-	Window._discordBtn = New("TextButton", {
+Window._discordBtn = New("TextButton", {
 		Name = "Discord",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 140, 0.5, 0),
 		Size = UDim2.fromOffset(28, 28),
-		BackgroundTransparency = 1,
-		Text = "",
+		BackgroundColor3 = Color3.fromRGB(88, 101, 242),
+		BackgroundTransparency = 0,
+		Text = "D",
+		Font = Enum.Font.GothamBold,
+		TextSize = 16,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		AutoButtonColor = false,
 		BorderSizePixel = 0,
 		ZIndex = 7,
 		Parent = Header,
 	})
-	New("ImageLabel", {
-		Size = UDim2.fromOffset(20, 20),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://18505728250",
-		ImageColor3 = Theme.TextDim,
-		ScaleType = Enum.ScaleType.Fit,
-		Parent = Window._discordBtn,
-	})
+	Corner(Window._discordBtn, 7)
 	Window._discordBtn.MouseButton1Click:Connect(function()
 		local ok = false
 		pcall(function()

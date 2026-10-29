@@ -4345,7 +4345,7 @@ end
 		})
 		Corner(chip, 5)
 		Pad(chip, 0, 0, 5, 5)
-		local entry = { Keybind = nil, Kind = "Keybind" }
+		local entry = { Keybind = nil, Kind = "Keybind", Name = o.Name or "Keybind" }
 		function entry:Get() return true end
 		function entry:Set()
 			if o.Callback then task.spawn(o.Callback) end
@@ -5306,8 +5306,24 @@ function Window:AddTab(tabOpts)
 					entry:Bind(nil)
 					entry:EndRebind()
 				else
-					entry:Bind(input.KeyCode)
-					entry:EndRebind()
+					-- conflict guard
+					local conflictEntry = nil
+					for _, other in ipairs(keybinds) do
+						if other ~= entry and other.Keybind == input.KeyCode then
+							conflictEntry = other
+							break
+						end
+					end
+					if conflictEntry then
+						local conflictName = conflictEntry.Name or conflictEntry.OptionName or "another function"
+						if activeWindow then
+							activeWindow:Notify({ Title = "Keybind Conflict", Text = ("Keybind Conflict: %s is already assigned to \"%s\". Choose another key."):format(input.KeyCode.Name, conflictName), Duration = 3.5 })
+						end
+						entry:EndRebind()
+					else
+						entry:Bind(input.KeyCode)
+						entry:EndRebind()
+					end
 				end
 			end
 			return

@@ -3706,6 +3706,8 @@ end
 		local optionKeybindEntries = {}
 
 		local function updateFieldText()
+			getgenv()._updateFieldTextCalls = (getgenv()._updateFieldTextCalls or 0) + 1
+			getgenv()._lastValueText = valueText
 			if multi then
 				if #selected == 0 then
 					valueText.Text = placeholder
@@ -3942,14 +3944,14 @@ end
 							selected[#selected + 1] = d.Value
 							selectedSet[d.Value] = true
 						end
-					else
-						selected = { d.Value }
-						selectedSet = { [d.Value] = true }
-						setOpen(false)
-					end
-					updateFieldText()
-					rebuildRows()
-					emitCallback()
+							else
+								selected = { d.Value }
+								selectedSet = { [d.Value] = true }
+								updateFieldText()
+								rebuildRows()
+								emitCallback()
+								setOpen(false)
+							end
 				end)
 			end
 		end

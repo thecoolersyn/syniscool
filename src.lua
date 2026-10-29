@@ -5780,25 +5780,34 @@ local anyFav = false
 			if Window._favEmpty then Window._favEmpty.Visible = not anyFav end
 		else
 			-- restore
+			-- restore
 			for _, m in ipairs(modules) do
 				local card = m.GetCard and m:GetCard()
 				if not card then continue end
-				if m._favOrigParent and m._favOrigParent.Parent then
-					card.Parent = m._favOrigParent
-					m._favOrigParent = nil
-				elseif card.Parent == Window._favLeftCol or card.Parent == Window._favRightCol then
-					local tab = m.Tab
-					local col = nil
-					if tab and tab.Page then
-						local scroller = tab.Page:FindFirstChild("Scroller")
-						if scroller then
-							local holder = scroller:FindFirstChild("Columns")
-							if holder then col = holder:FindFirstChild("Left") end
+				local inFav = (card.Parent == Window._favLeftCol or card.Parent == Window._favRightCol)
+				if (m._favOrigParent and m._favOrigParent.Parent) or inFav then
+					local targetCol = m._favOrigParent
+					if not (targetCol and targetCol.Parent) then
+						local tab = m.Tab
+						if tab and tab.Page then
+							local scroller = tab.Page:FindFirstChild("Scroller")
+							if scroller then
+								local holder = scroller:FindFirstChild("Columns")
+								if holder then targetCol = holder:FindFirstChild("Left") end
+							end
 						end
 					end
-					if col then
-						card.Parent = col
+					if not (targetCol and targetCol.Parent) and tabs[1] and tabs[1].Page then
+						local sc = tabs[1].Page:FindFirstChild("Scroller")
+						if sc then
+							local h = sc:FindFirstChild("Columns")
+							if h then targetCol = h:FindFirstChild("Left") end
+						end
 					end
+					if targetCol and targetCol.Parent then
+						card.Parent = targetCol
+					end
+					m._favOrigParent = nil
 				end
 			end
 			container.Visible = false

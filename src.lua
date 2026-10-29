@@ -5781,19 +5781,35 @@ local anyFav = false
 		else
 			-- restore
 			for _, m in ipairs(modules) do
+				local card = m.GetCard and m:GetCard()
+				if not card then continue end
 				if m._favOrigParent and m._favOrigParent.Parent then
-					local card = m.GetCard and m:GetCard()
-					if card then card.Parent = m._favOrigParent end
+					card.Parent = m._favOrigParent
 					m._favOrigParent = nil
+				elseif card.Parent == Window._favLeftCol or card.Parent == Window._favRightCol then
+					local tab = m.Tab
+					local col = nil
+					if tab and tab.Page then
+						local scroller = tab.Page:FindFirstChild("Scroller")
+						if scroller then
+							local holder = scroller:FindFirstChild("Columns")
+							if holder then col = holder:FindFirstChild("Left") end
+						end
+					end
+					if col then
+						card.Parent = col
+					end
 				end
 			end
 			container.Visible = false
-			if Window._favPrevTab and Window._favPrevTab.Select then
+			if Window._favPrevTab then
+				if Window._favPrevTab.Page then Window._favPrevTab.Page.Visible = true end
 				dividerLabel.Text = Window._favPrevTab and ("[ " .. Window._favPrevTab.Name .. " ]") or ""
-				Window._favPrevTab:Select()
-			elseif tabs[1] and tabs[1].Select then
+				if Window._favPrevTab.Select then Window._favPrevTab:Select() end
+			elseif tabs[1] then
+				if tabs[1].Page then tabs[1].Page.Visible = true end
 				dividerLabel.Text = tabs[1] and ("[ " .. tabs[1].Name .. " ]") or ""
-				tabs[1]:Select()
+				if tabs[1].Select then tabs[1]:Select() end
 			end
 		end
 	end)

@@ -2931,7 +2931,7 @@ end
 		local function refresh()
 			chip.Text = KeybindText(entry.Keybind)
 			Tween(chip, TWEEN_FAST, {
-				TextColor3 = entry.Keybind and Theme.TextSoft or Theme.TextDim,
+				TextColor3 = Color3.fromRGB(255, 255, 255),
 			})
 		end
 		bindTheme(function()
@@ -3386,10 +3386,10 @@ end
 						Text = "[...]",
 						FontFace = FONT_SEMIBOLD,
 						TextSize = 12,
-						TextColor3 = Theme.TextDim,
-						AutoButtonColor = false,
-						BorderSizePixel = 0,
-						Parent = rowBtn,
+TextColor3 = Color3.fromRGB(255, 255, 255),
+			AutoButtonColor = false,
+			BorderSizePixel = 0,
+			Parent = rowBtn,
 					})
 					Corner(chip, 4)
 					Pad(chip, 0, 0, 4, 4)
@@ -3830,7 +3830,7 @@ end
 						Text = "[...]",
 						FontFace = FONT_SEMIBOLD,
 						TextSize = 12,
-						TextColor3 = Theme.TextDim,
+						TextColor3 = Color3.fromRGB(255, 255, 255),
 						AutoButtonColor = false,
 						BorderSizePixel = 0,
 						ZIndex = 84,
@@ -3867,7 +3867,10 @@ end
 						function entry:Bind(newKey)
 							entry.Keybind = newKey
 							if entry.OnBind then entry.OnBind(newKey) end
-							if entry.Chip then entry.Chip.Text = KeybindText(entry.Keybind) end
+							if entry.Chip then
+								entry.Chip.Text = KeybindText(entry.Keybind)
+								entry.Chip.TextColor3 = Color3.fromRGB(255, 255, 255)
+							end
 							if keybindListInvalidate then keybindListInvalidate() end
 						end
 						function entry:BeginRebind()
@@ -3883,7 +3886,10 @@ end
 						function entry:EndRebind()
 							local c = entry.Chip
 							if c then Tween(c, TWEEN_FAST, { BackgroundTransparency = 1 }) end
-							if c then c.Text = KeybindText(entry.Keybind) end
+							if c then
+								c.Text = KeybindText(entry.Keybind)
+								c.TextColor3 = Color3.fromRGB(255, 255, 255)
+							end
 						end
 						function entry:RefreshChip()
 							local c = entry.Chip
@@ -3909,7 +3915,7 @@ end
 					if chip then
 						chip.Text = KeybindText(entry.Keybind)
 						entry.Chip = chip
-						if entry.Keybind then chip.TextColor3 = Theme.TextSoft else chip.TextColor3 = Theme.TextDim end
+						chip.TextColor3 = Color3.fromRGB(255, 255, 255)
 						chip.MouseButton1Click:Connect(function()
 							if rebinding then return end
 							rebinding = { Entry = entry }

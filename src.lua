@@ -5572,48 +5572,6 @@ Window._searchBox = New("TextBox", {
 			Window._searchResults.BackgroundColor3 = Theme.Background
 		end
 	end)
-Window._discordUrl = nil
-	pcall(function()
-		if type(getcustomasset) == "function" then
-			Window._discordUrl = getcustomasset("Norepine/Assets/discord.png")
-		end
-	end)
-	Window._discordBtn = New("TextButton", {
-		Name = "Discord",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 140, 0.5, 0),
-		Size = UDim2.fromOffset(28, 28),
-		BackgroundTransparency = 1,
-		Text = Window._discordUrl and "" or "D",
-		Font = Enum.Font.GothamBold,
-		TextSize = 16,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		AutoButtonColor = false,
-		BorderSizePixel = 0,
-		ZIndex = 7,
-		Parent = Header,
-	})
-	Corner(Window._discordBtn, 7)
-	if Window._discordUrl then
-		New("ImageLabel", {
-			Size = UDim2.fromOffset(20, 20),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			BackgroundTransparency = 1,
-			Image = Window._discordUrl,
-			ImageColor3 = Color3.fromRGB(255, 255, 255),
-			ScaleType = Enum.ScaleType.Fit,
-			Parent = Window._discordBtn,
-		})
-	end
-	Window._discordBtn.MouseButton1Click:Connect(function()
-		local ok = false
-		pcall(function()
-			if type(setclipboard) == "function" then setclipboard("https://discord.gg/h7vdy52DXD") ok = true
-			elseif type(toclipboard) == "function" then toclipboard("https://discord.gg/h7vdy52DXD") ok = true end
-		end)
-		if activeWindow then activeWindow:Notify({ Title = "Norepine", Text = ok and "Discord copied to clipboard" or "Clipboard not supported", Duration = 3 }) end
-	end)
 Window._searchBox = New("TextBox", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0.5, 0, 0.5, 0),

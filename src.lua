@@ -5813,21 +5813,17 @@ local anyFav = false
 				end
 			end
 			container.Visible = false
-			if Window._favPrevTab then
-				if Window._favPrevTab.Page then Window._favPrevTab.Page.Visible = true end
-				dividerLabel.Text = Window._favPrevTab and ("[ " .. Window._favPrevTab.Name .. " ]") or ""
-				task.defer(function()
-					if Window._favPrevTab and Window._favPrevTab.Select then
-						Window._favPrevTab:Select()
-					end
-				end)
-			elseif tabs[1] then
-				if tabs[1].Page then tabs[1].Page.Visible = true end
-				dividerLabel.Text = tabs[1] and ("[ " .. tabs[1].Name .. " ]") or ""
-				task.defer(function()
-					if tabs[1] and tabs[1].Select then tabs[1]:Select() end
-				end)
-			end
+			task.defer(function()
+				if Window._favPrevTab then
+					if Window._favPrevTab.Page then Window._favPrevTab.Page.Visible = true end
+					dividerLabel.Text = Window._favPrevTab and ("[ " .. Window._favPrevTab.Name .. " ]") or ""
+					if Window._favPrevTab.Select then Window._favPrevTab:Select() end
+				elseif tabs[1] then
+					if tabs[1].Page then tabs[1].Page.Visible = true end
+					dividerLabel.Text = tabs[1] and ("[ " .. tabs[1].Name .. " ]") or ""
+					if tabs[1].Select then tabs[1]:Select() end
+				end
+			end)
 		end
 	end)
 local gearBtn = IconButton(Header, 28, 7)

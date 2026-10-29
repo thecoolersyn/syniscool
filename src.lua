@@ -4483,7 +4483,6 @@ end
 			if card then
 				if Module.Favorited then
 					if card.Parent ~= Window._favLeftCol and card.Parent ~= Window._favRightCol then
-						Module._favOrigParent = card.Parent
 						local col = Window._favLeftCol
 						if Window._favColHeight[Window._favRightCol] < Window._favColHeight[Window._favLeftCol] then
 							col = Window._favRightCol
@@ -4491,9 +4490,17 @@ end
 						card.Parent = col
 					end
 				else
-					if Module._favOrigParent and Module._favOrigParent.Parent then
-						card.Parent = Module._favOrigParent
-						Module._favOrigParent = nil
+					local tab = Module.Tab
+					local col = nil
+					if tab and tab.Page then
+						local scroller = tab.Page:FindFirstChild("Scroller")
+						if scroller then
+							local holder = scroller:FindFirstChild("Columns")
+							if holder then col = holder:FindFirstChild("Left") end
+						end
+					end
+					if col and col.Parent then
+						card.Parent = col
 					end
 				end
 			end
@@ -5767,7 +5774,6 @@ local anyFav = false
 					anyFav = true
 					local card = m.GetCard and m:GetCard()
 					if card and card.Parent ~= Window._favLeftCol and card.Parent ~= Window._favRightCol then
-						m._favOrigParent = card.Parent
 						local col = Window._favLeftCol
 						if Window._favColHeight[Window._favRightCol] < Window._favColHeight[Window._favLeftCol] then
 							col = Window._favRightCol
@@ -5784,30 +5790,26 @@ local anyFav = false
 			for _, m in ipairs(modules) do
 				local card = m.GetCard and m:GetCard()
 				if not card then continue end
-				local inFav = (card.Parent == Window._favLeftCol or card.Parent == Window._favRightCol)
-				if (m._favOrigParent and m._favOrigParent.Parent) or inFav then
-					local targetCol = m._favOrigParent
-					if not (targetCol and targetCol.Parent) then
-						local tab = m.Tab
-						if tab and tab.Page then
-							local scroller = tab.Page:FindFirstChild("Scroller")
-							if scroller then
-								local holder = scroller:FindFirstChild("Columns")
-								if holder then targetCol = holder:FindFirstChild("Left") end
-							end
+				if card.Parent == Window._favLeftCol or card.Parent == Window._favRightCol then
+					local tab = m.Tab
+					local col = nil
+					if tab and tab.Page then
+						local scroller = tab.Page:FindFirstChild("Scroller")
+						if scroller then
+							local holder = scroller:FindFirstChild("Columns")
+							if holder then col = holder:FindFirstChild("Left") end
 						end
 					end
-					if not (targetCol and targetCol.Parent) and tabs[1] and tabs[1].Page then
+					if not (col and col.Parent) and tabs[1] and tabs[1].Page then
 						local sc = tabs[1].Page:FindFirstChild("Scroller")
 						if sc then
 							local h = sc:FindFirstChild("Columns")
-							if h then targetCol = h:FindFirstChild("Left") end
+							if h then col = h:FindFirstChild("Left") end
 						end
 					end
-					if targetCol and targetCol.Parent then
-						card.Parent = targetCol
+					if col and col.Parent then
+						card.Parent = col
 					end
-					m._favOrigParent = nil
 				end
 			end
 			container.Visible = false

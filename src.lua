@@ -5813,6 +5813,7 @@ local anyFav = false
 				end
 			end
 			container.Visible = false
+			task.wait(0.1)
 			task.defer(function()
 				if Window._favPrevTab then
 					if Window._favPrevTab.Page then Window._favPrevTab.Page.Visible = true end

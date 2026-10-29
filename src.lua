@@ -4482,9 +4482,13 @@ end
 			local card = Module.GetCard and Module:GetCard()
 			if card then
 				if Module.Favorited then
-					if card.Parent ~= Window._favContainer then
+					if card.Parent ~= Window._favLeftCol and card.Parent ~= Window._favRightCol then
 						Module._favOrigParent = card.Parent
-						card.Parent = Window._favContainer
+						local col = Window._favLeftCol
+						if Window._favColHeight[Window._favRightCol] < Window._favColHeight[Window._favLeftCol] then
+							col = Window._favRightCol
+						end
+						card.Parent = col
 					end
 				else
 					if Module._favOrigParent and Module._favOrigParent.Parent then
@@ -5690,17 +5694,48 @@ New("TextButton", {
 				Name = "FavoritesContainer",
 				Size = UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				CanvasSize = UDim2.new(0, 0, 0, 0),
-				AutomaticCanvasSize = Enum.AutomaticSize.Y,
-				ScrollingDirection = Enum.ScrollingDirection.Y,
 				ScrollBarThickness = 4,
 				ScrollBarImageColor3 = Theme.Scrollbar,
+				AutomaticCanvasSize = Enum.AutomaticSize.Y,
+				CanvasSize = UDim2.new(0, 0, 0, 0),
+				ScrollingDirection = Enum.ScrollingDirection.Y,
+				BorderSizePixel = 0,
 				Visible = false,
 				Parent = Content,
 			})
-			Window._favLayout = New("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = Window._favContainer })
+			bindTheme(function()
+				if Window._favContainer and Window._favContainer.Parent then
+					Window._favContainer.ScrollBarImageColor3 = Theme.Scrollbar
+				end
+			end)
 			Pad(Window._favContainer, 0, 0, 0, 4)
+			Window._favHolder = New("Frame", {
+				Name = "Columns",
+				Size = UDim2.new(1, 0, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				BackgroundTransparency = 1,
+				Parent = Window._favContainer,
+			})
+			Window._favLeftCol = New("Frame", {
+				Name = "Left",
+				Position = UDim2.new(0, 0, 0, 0),
+				Size = UDim2.new(0.5, -4, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				BackgroundTransparency = 1,
+				Parent = Window._favHolder,
+			})
+			New("UIListLayout", { Padding = UDim.new(0, CARD_GAP), SortOrder = Enum.SortOrder.LayoutOrder, Parent = Window._favLeftCol })
+			Window._favRightCol = New("Frame", {
+				Name = "Right",
+				Position = UDim2.new(0.5, 4, 0, 0),
+				Size = UDim2.new(0.5, -4, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				BackgroundTransparency = 1,
+				Parent = Window._favHolder,
+			})
+			New("UIListLayout", { Padding = UDim.new(0, CARD_GAP), SortOrder = Enum.SortOrder.LayoutOrder, Parent = Window._favRightCol })
+			Window._favColHeight = { [Window._favLeftCol] = 0, [Window._favRightCol] = 0 }
+			Window._favColCount = { [Window._favLeftCol] = 0, [Window._favRightCol] = 0 }
 			Window._favEmpty = New("TextLabel", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -5726,14 +5761,19 @@ New("TextButton", {
 			end
 			container.Visible = true
 			-- reparent favorited cards
-			local anyFav = false
+local anyFav = false
 			for _, m in ipairs(modules) do
 				if m.Favorited then
 					anyFav = true
 					local card = m.GetCard and m:GetCard()
-					if card and card.Parent ~= container then
+					if card and card.Parent ~= Window._favLeftCol and card.Parent ~= Window._favRightCol then
 						m._favOrigParent = card.Parent
-						card.Parent = container
+						local col = Window._favLeftCol
+						if Window._favColHeight[Window._favRightCol] < Window._favColHeight[Window._favLeftCol] then
+							col = Window._favRightCol
+						end
+						card.Parent = col
+						Window._favColCount[col] = (Window._favColCount[col] or 0) + 1
 					end
 				end
 			end

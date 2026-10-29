@@ -1995,10 +1995,32 @@ end
 			})
 			New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = btn })
 			Stroke(btn, Theme.GroupStroke, 0.3)
-			local icon = MakeIcon(btn, "bomb", 22, Theme.Text)
+			local icon
+		local logoUrl = ResolveLogoUrl()
+		if logoUrl then
+			icon = New("ImageLabel", {
+				Name = "LogoIcon",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.new(0.5, 0, 0.5, 0),
+				Size = UDim2.fromOffset(24, 24),
+				BackgroundTransparency = 1,
+				Image = logoUrl,
+				ImageColor3 = Theme.Accent,
+				ScaleType = Enum.ScaleType.Fit,
+				ZIndex = 101,
+				Parent = btn,
+			})
+		else
+			icon = MakeIcon(btn, "bomb", 22, Theme.Text)
 			icon.AnchorPoint = Vector2.new(0.5, 0.5)
 			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 			icon.ZIndex = 101
+		end
+		if icon and icon:IsA("ImageLabel") then
+			bindTheme(function()
+				if icon.Parent then icon.ImageColor3 = Theme.Accent end
+			end)
+		end
 			btn.InputBegan:Connect(function(input)
 				if destroyed then return end
 				if input.UserInputType == Enum.UserInputType.MouseButton1

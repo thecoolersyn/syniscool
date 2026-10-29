@@ -3636,7 +3636,7 @@ end
 			Parent = Main,
 		})
 
-		local searchable = o.Searchable == true
+		local searchable = true
 		local searchFrame, searchInput
 		local listScroller
 		local emptyLabel
@@ -3945,6 +3945,7 @@ end
 					else
 						selected = { d.Value }
 						selectedSet = { [d.Value] = true }
+						setOpen(false)
 					end
 					updateFieldText()
 					rebuildRows()
@@ -3987,6 +3988,8 @@ end
 				popup.Visible = true
 				Tween(chev, TWEEN_MED, { Rotation = 180 })
 			else
+				queryText = ""
+				if searchInput then searchInput.Text = "" end
 				guard.Visible = false
 				popup.Visible = false
 				Tween(chev, TWEEN_MED, { Rotation = 0 })

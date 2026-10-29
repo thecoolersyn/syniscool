@@ -3636,7 +3636,7 @@ TextColor3 = Color3.fromRGB(255, 255, 255),
 			Parent = Main,
 		})
 
-		local searchable = o.Searchable == true
+		local searchable = true
 		local searchFrame, searchInput
 		local listScroller
 		local emptyLabel

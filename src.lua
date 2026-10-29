@@ -3636,7 +3636,7 @@ end
 			Parent = Main,
 		})
 
-		local searchable = true
+		local searchable = o.Searchable == true
 		local searchFrame, searchInput
 		local listScroller
 		local emptyLabel
@@ -3706,8 +3706,6 @@ end
 		local optionKeybindEntries = {}
 
 		local function updateFieldText()
-			getgenv()._updateFieldTextCalls = (getgenv()._updateFieldTextCalls or 0) + 1
-			getgenv()._lastValueText = valueText
 			if multi then
 				if #selected == 0 then
 					valueText.Text = placeholder
@@ -3944,14 +3942,14 @@ end
 							selected[#selected + 1] = d.Value
 							selectedSet[d.Value] = true
 						end
-							else
-								selected = { d.Value }
-								selectedSet = { [d.Value] = true }
-								updateFieldText()
-								rebuildRows()
-								emitCallback()
-								setOpen(false)
-							end
+					else
+						selected = { d.Value }
+						selectedSet = { [d.Value] = true }
+					end
+					updateFieldText()
+					rebuildRows()
+					emitCallback()
+					if not multi then setOpen(false) end
 				end)
 			end
 		end
@@ -3990,8 +3988,6 @@ end
 				popup.Visible = true
 				Tween(chev, TWEEN_MED, { Rotation = 180 })
 			else
-				queryText = ""
-				if searchInput then searchInput.Text = "" end
 				guard.Visible = false
 				popup.Visible = false
 				Tween(chev, TWEEN_MED, { Rotation = 0 })
@@ -4488,6 +4484,7 @@ end
 			if card then
 				if Module.Favorited then
 					if card.Parent ~= Window._favLeftCol and card.Parent ~= Window._favRightCol then
+						Module._favOrigParent = card.Parent
 						local col = Window._favLeftCol
 						if Window._favColHeight[Window._favRightCol] < Window._favColHeight[Window._favLeftCol] then
 							col = Window._favRightCol
@@ -4495,17 +4492,9 @@ end
 						card.Parent = col
 					end
 				else
-					local tab = Module.Tab
-					local col = nil
-					if tab and tab.Page then
-						local scroller = tab.Page:FindFirstChild("Scroller")
-						if scroller then
-							local holder = scroller:FindFirstChild("Columns")
-							if holder then col = holder:FindFirstChild("Left") end
-						end
-					end
-					if col and col.Parent then
-						card.Parent = col
+					if Module._favOrigParent and Module._favOrigParent.Parent then
+						card.Parent = Module._favOrigParent
+						Module._favOrigParent = nil
 					end
 				end
 			end
@@ -5779,6 +5768,7 @@ local anyFav = false
 					anyFav = true
 					local card = m.GetCard and m:GetCard()
 					if card and card.Parent ~= Window._favLeftCol and card.Parent ~= Window._favRightCol then
+						m._favOrigParent = card.Parent
 						local col = Window._favLeftCol
 						if Window._favColHeight[Window._favRightCol] < Window._favColHeight[Window._favLeftCol] then
 							col = Window._favRightCol
@@ -5791,45 +5781,21 @@ local anyFav = false
 			if Window._favEmpty then Window._favEmpty.Visible = not anyFav end
 		else
 			-- restore
-			-- restore
 			for _, m in ipairs(modules) do
-				local card = m.GetCard and m:GetCard()
-				if not card then continue end
-				if card.Parent == Window._favLeftCol or card.Parent == Window._favRightCol then
-					local tab = m.Tab
-					local col = nil
-					if tab and tab.Page then
-						local scroller = tab.Page:FindFirstChild("Scroller")
-						if scroller then
-							local holder = scroller:FindFirstChild("Columns")
-							if holder then col = holder:FindFirstChild("Left") end
-						end
-					end
-					if not (col and col.Parent) and tabs[1] and tabs[1].Page then
-						local sc = tabs[1].Page:FindFirstChild("Scroller")
-						if sc then
-							local h = sc:FindFirstChild("Columns")
-							if h then col = h:FindFirstChild("Left") end
-						end
-					end
-					if col and col.Parent then
-						card.Parent = col
-					end
+				if m._favOrigParent and m._favOrigParent.Parent then
+					local card = m.GetCard and m:GetCard()
+					if card then card.Parent = m._favOrigParent end
+					m._favOrigParent = nil
 				end
 			end
 			container.Visible = false
-			task.wait(0.1)
-			task.defer(function()
-				if Window._favPrevTab then
-					if Window._favPrevTab.Page then Window._favPrevTab.Page.Visible = true end
-					dividerLabel.Text = Window._favPrevTab and ("[ " .. Window._favPrevTab.Name .. " ]") or ""
-					if Window._favPrevTab.Select then Window._favPrevTab:Select() end
-				elseif tabs[1] then
-					if tabs[1].Page then tabs[1].Page.Visible = true end
-					dividerLabel.Text = tabs[1] and ("[ " .. tabs[1].Name .. " ]") or ""
-					if tabs[1].Select then tabs[1]:Select() end
-				end
-			end)
+			if Window._favPrevTab and Window._favPrevTab.Select then
+				dividerLabel.Text = Window._favPrevTab and ("[ " .. Window._favPrevTab.Name .. " ]") or ""
+				Window._favPrevTab:Select()
+			elseif tabs[1] and tabs[1].Select then
+				dividerLabel.Text = tabs[1] and ("[ " .. tabs[1].Name .. " ]") or ""
+				tabs[1]:Select()
+			end
 		end
 	end)
 local gearBtn = IconButton(Header, 28, 7)

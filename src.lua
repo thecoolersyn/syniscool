@@ -7,11 +7,10 @@ local LocalPlayer = Players.LocalPlayer
 local Theme = {}
 local DEFAULT_THEME = "Default"
 local THEME_ORDER = {
-	"Default", "Cobalt", "Night", "Wave", "Vapor", "Frost",
-	"Midnight", "Obsidian", "Crimson", "Emerald", "Rose", "Slate",
-	"Dracula", "Nord", "Catppuccin", "AMOLED", "Cyberpunk",
-	"Pure Black", "Halloween", "Deep Ocean", "Crimson Eclipse", "Sakura Midnight",
-	"Liquid Glass",
+	"Default", "Midnight", "Obsidian", "Dracula", "Nord", "Catppuccin",
+	"AMOLED", "Frost", "Emerald", "Crimson", "Cobalt", "Night", "Wave",
+	"Vapor", "Rose", "Slate", "Cyberpunk", "Pure Black", "Crimson Eclipse",
+	"Sakura Midnight",
 }
 local THEMES = {
 	Default = {
@@ -524,64 +523,6 @@ local THEMES = {
 			Color3.fromRGB(245, 245, 247),
 		},
 	},
-	Halloween = {
-		Background   = Color3.fromRGB(13, 8, 18),
-		Group        = Color3.fromRGB(26, 15, 34),
-		GroupStroke  = Color3.fromRGB(120, 60, 30),
-		Control      = Color3.fromRGB(38, 22, 48),
-		ControlHover = Color3.fromRGB(52, 30, 64),
-		Divider      = Color3.fromRGB(40, 22, 50),
-		Text         = Color3.fromRGB(250, 238, 225),
-		TextDim      = Color3.fromRGB(190, 160, 150),
-		TextSoft     = Color3.fromRGB(225, 205, 190),
-		HeaderText   = Color3.fromRGB(180, 120, 80),
-		TabSelected  = Color3.fromRGB(44, 24, 56),
-		PillOff      = Color3.fromRGB(54, 34, 64),
-		KnobOff      = Color3.fromRGB(230, 210, 195),
-		PillOn       = Color3.fromRGB(255, 122, 24),
-		KnobOn       = Color3.fromRGB(18, 10, 6),
-		SliderTrack  = Color3.fromRGB(52, 32, 62),
-		SliderFill   = Color3.fromRGB(255, 140, 40),
-		Scrollbar    = Color3.fromRGB(92, 52, 104),
-		CardTransparency   = 0.35,
-		NotifyTransparency = 0.35,
-		Accent       = Color3.fromRGB(255, 122, 24),
-		TitleGradient = {
-			Color3.fromRGB(255, 122, 24),
-			Color3.fromRGB(168, 85, 247),
-			Color3.fromRGB(12, 6, 18),
-			Color3.fromRGB(255, 122, 24),
-		},
-	},
-	["Deep Ocean"] = {
-		Background   = Color3.fromRGB(6, 18, 32),
-		Group        = Color3.fromRGB(11, 28, 48),
-		GroupStroke  = Color3.fromRGB(30, 70, 110),
-		Control      = Color3.fromRGB(16, 38, 62),
-		ControlHover = Color3.fromRGB(22, 50, 78),
-		Divider      = Color3.fromRGB(18, 42, 66),
-		Text         = Color3.fromRGB(226, 240, 250),
-		TextDim      = Color3.fromRGB(140, 168, 190),
-		TextSoft     = Color3.fromRGB(195, 218, 235),
-		HeaderText   = Color3.fromRGB(110, 150, 180),
-		TabSelected  = Color3.fromRGB(16, 40, 62),
-		PillOff      = Color3.fromRGB(28, 54, 80),
-		KnobOff      = Color3.fromRGB(190, 210, 225),
-		PillOn       = Color3.fromRGB(42, 169, 255),
-		KnobOn       = Color3.fromRGB(6, 18, 32),
-		SliderTrack  = Color3.fromRGB(24, 50, 76),
-		SliderFill   = Color3.fromRGB(42, 169, 255),
-		Scrollbar    = Color3.fromRGB(40, 80, 120),
-		CardTransparency   = 0.35,
-		NotifyTransparency = 0.35,
-		Accent       = Color3.fromRGB(42, 169, 255),
-		TitleGradient = {
-			Color3.fromRGB(42, 169, 255),
-			Color3.fromRGB(80, 200, 220),
-			Color3.fromRGB(2, 8, 16),
-			Color3.fromRGB(42, 169, 255),
-		},
-	},
 	["Crimson Eclipse"] = {
 		Background   = Color3.fromRGB(18, 6, 8),
 		Group        = Color3.fromRGB(30, 10, 14),
@@ -640,103 +581,44 @@ local THEMES = {
 			Color3.fromRGB(255, 143, 199),
 		},
 	},
-	["Liquid Glass"] = {
-		Background   = Color3.fromRGB(214, 228, 240),
-		Group        = Color3.fromRGB(236, 244, 250),
-		GroupStroke  = Color3.fromRGB(168, 198, 220),
-		Control      = Color3.fromRGB(206, 224, 238),
-		ControlHover = Color3.fromRGB(218, 234, 245),
-		Divider      = Color3.fromRGB(188, 212, 230),
-		Text         = Color3.fromRGB(26, 44, 62),
-		TextDim      = Color3.fromRGB(74, 104, 130),
-		TextSoft     = Color3.fromRGB(44, 70, 94),
-		HeaderText   = Color3.fromRGB(96, 128, 154),
-		TabSelected  = Color3.fromRGB(222, 236, 246),
-		PillOff      = Color3.fromRGB(198, 218, 234),
-		KnobOff      = Color3.fromRGB(255, 255, 255),
-		PillOn       = Color3.fromRGB(90, 174, 224),
-		KnobOn       = Color3.fromRGB(255, 255, 255),
-		SliderTrack  = Color3.fromRGB(198, 218, 234),
-		SliderFill   = Color3.fromRGB(90, 174, 224),
-		Scrollbar    = Color3.fromRGB(150, 180, 202),
-		CardTransparency   = 0.05,
-		NotifyTransparency = 0.1,
-		Accent       = Color3.fromRGB(90, 174, 224),
-		TitleGradient = {
-			Color3.fromRGB(26, 44, 62),
-			Color3.fromRGB(44, 70, 94),
-			Color3.fromRGB(26, 44, 62),
-			Color3.fromRGB(26, 44, 62),
-		},
-	},
 }
 local themeName = DEFAULT_THEME
 local themeAppliers = {}
-local STYLE_ORDER = { "Default", "Halloween", "Liquid Glass", "Neon", "Minimal", "Aurora", "Retro", "Sakura" }
+local STYLE_ORDER = { "Halloween", "Deep Ocean", "Liquid Glass", "Neon", "Minimal", "Aurora" }
 local STYLES = {
-	Default = {},
 	Halloween = {
-		Accent = Color3.fromRGB(255, 140, 0),
-		PillOn = Color3.fromRGB(255, 140, 0),
-		KnobOn = Color3.fromRGB(20, 12, 4),
-		SliderFill = Color3.fromRGB(255, 160, 40),
-		TitleGradient = {
-			Color3.fromRGB(255, 140, 0),
-			Color3.fromRGB(180, 90, 220),
-			Color3.fromRGB(12, 6, 16),
-			Color3.fromRGB(255, 140, 0),
-		},
+		CardTransparency = 0.34,
+		NotifyTransparency = 0.32,
+	},
+	["Deep Ocean"] = {
+		CardTransparency = 0.3,
+		NotifyTransparency = 0.28,
 	},
 	["Liquid Glass"] = {
-		CardTransparency = 0.25,
-		NotifyTransparency = 0.2,
-		GroupStroke = Color3.fromRGB(150, 180, 210),
+		CardTransparency = 0.08,
+		NotifyTransparency = 0.12,
 	},
 	Neon = {
-		Accent = Color3.fromRGB(0, 255, 200),
-		PillOn = Color3.fromRGB(0, 255, 200),
-		SliderFill = Color3.fromRGB(255, 0, 220),
-		GroupStroke = Color3.fromRGB(0, 220, 200),
-		CardTransparency = 0.3,
-		TitleGradient = {
-			Color3.fromRGB(0, 255, 200),
-			Color3.fromRGB(255, 0, 220),
-			Color3.fromRGB(4, 8, 12),
-			Color3.fromRGB(0, 255, 200),
-		},
+		CardTransparency = 0.28,
+		NotifyTransparency = 0.24,
 	},
 	Minimal = {
 		CardTransparency = 0,
 		NotifyTransparency = 0,
 	},
 	Aurora = {
-		Accent = Color3.fromRGB(120, 220, 180),
-		PillOn = Color3.fromRGB(120, 220, 180),
-		SliderFill = Color3.fromRGB(150, 180, 255),
-		Background = Color3.fromRGB(14, 22, 30),
-		Group = Color3.fromRGB(20, 32, 42),
-		TitleGradient = {
-			Color3.fromRGB(120, 220, 180),
-			Color3.fromRGB(150, 180, 255),
-			Color3.fromRGB(8, 12, 18),
-			Color3.fromRGB(120, 220, 180),
-		},
-	},
-	Retro = {
-		Accent = Color3.fromRGB(230, 180, 90),
-		PillOn = Color3.fromRGB(230, 180, 90),
-		SliderFill = Color3.fromRGB(240, 200, 120),
-		GroupStroke = Color3.fromRGB(120, 96, 60),
-	},
-	Sakura = {
-		Accent = Color3.fromRGB(245, 170, 200),
-		PillOn = Color3.fromRGB(245, 170, 200),
-		SliderFill = Color3.fromRGB(250, 190, 215),
-		Background = Color3.fromRGB(28, 22, 28),
-		Group = Color3.fromRGB(38, 30, 38),
+		CardTransparency = 0.24,
+		NotifyTransparency = 0.22,
 	},
 }
-local activeStyle = "Default"
+local STYLE_ALIASES = { Default = "Minimal", Retro = "Minimal", Sakura = "Aurora" }
+local function normalizeStyleName(name)
+	if type(name) ~= "string" then return "Minimal" end
+	name = STYLE_ALIASES[name] or name
+	if not STYLES[name] then return "Minimal" end
+	return name
+end
+local activeStyle = "Minimal"
 local ThemeColors = {}
 local borderFX = "Default"
 local BORDER_FX_ORDER = { "Default", "Glow", "Thin", "Thick", "None" }
@@ -767,10 +649,9 @@ local function applyThemeTokens(name)
 		Theme[k] = v
 	end
 	local st = STYLES[activeStyle] or {}
-	for k, v in pairs(st) do
-		Theme[k] = v
-	end
-	Theme.Accent = st.Accent or t.Accent or t.TitleGradient[1]
+	Theme.CardTransparency = st.CardTransparency or t.CardTransparency
+	Theme.NotifyTransparency = st.NotifyTransparency or t.NotifyTransparency
+	Theme.Accent = t.Accent or t.TitleGradient[1]
 	applyColorOverrides()
 	for _, fn in ipairs(themeAppliers) do
 		pcall(fn)
@@ -784,10 +665,7 @@ local function SetThemeLocal(name)
 	return applyThemeTokens(name)
 end
 local function SetStyleLocal(name)
-	if type(name) ~= "string" or not STYLES[name] then
-		name = "Default"
-	end
-	activeStyle = name
+	activeStyle = normalizeStyleName(name)
 	applyThemeTokens(themeName)
 	return activeStyle
 end
@@ -945,6 +823,22 @@ local function BuildThemeDecorations(parent, bindTheme)
 	local webUrl = loadThemeAsset("cobweb.png")
 	local bubbleUrl = loadThemeAsset("bubble.png")
 	local particleUrl = loadThemeAsset("particle.png")
+	local hazeUrl = loadThemeAsset("halloween_haze.png")
+	local moonUrl = loadThemeAsset("halloween_moon.png")
+	local batsUrl = loadThemeAsset("halloween_bats.png")
+	local fogUrl = loadThemeAsset("halloween_fog.png")
+	local pumpkinUrl = loadThemeAsset("halloween_pumpkin.png")
+	local oceanUrl = loadThemeAsset("ocean_bg.png")
+	local seaweedUrl = loadThemeAsset("ocean_seaweed.png")
+	local sheenUrl = loadThemeAsset("glass_sheen.png")
+	local reflectionUrl = loadThemeAsset("glass_reflection.png")
+	local frostUrl = loadThemeAsset("glass_frost.png")
+	local sweepUrl = loadThemeAsset("neon_sweep.png")
+	local gridUrl = loadThemeAsset("neon_grid.png")
+	local scanUrl = loadThemeAsset("scanlines.png")
+	local auroraUrl = loadThemeAsset("aurora_bg.png")
+	local starsUrl = loadThemeAsset("aurora_stars.png")
+
 	local decor = New("Frame", {
 		Name = "Decorations",
 		Size = UDim2.new(1, 0, 1, 0),
@@ -959,20 +853,182 @@ local function BuildThemeDecorations(parent, bindTheme)
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
-		ZIndex = 50,
+		ZIndex = 60,
 		Parent = parent,
 	})
 	refs.front = fg
+
+	local function backdrop(name, url, props)
+		if not url then return nil end
+		props = props or {}
+		props.Name = name
+		props.BackgroundTransparency = 1
+		props.Image = url
+		props.ScaleType = props.ScaleType or Enum.ScaleType.Stretch
+		props.ZIndex = 0
+		props.Parent = decor
+		local inst = New("ImageLabel", props)
+		refs[name] = inst
+		return inst
+	end
+
+	backdrop("HalloweenHaze", hazeUrl, {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 0.08,
+	})
+	backdrop("HalloweenMoon", moonUrl, {
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(0, 18, 0, 16),
+		Size = UDim2.fromOffset(150, 150),
+		ImageTransparency = 0.05,
+		ScaleType = Enum.ScaleType.Fit,
+	})
+	backdrop("HalloweenBats", batsUrl, {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.52, 0, 0.06, 0),
+		Size = UDim2.new(0.8, 0, 0, 120),
+		ImageTransparency = 0.12,
+	})
+	backdrop("HalloweenFog", fogUrl, {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, 4),
+		Size = UDim2.new(1.2, 0, 0, 120),
+		ImageTransparency = 0.1,
+	})
+	backdrop("OceanBackdrop", oceanUrl, {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 0.12,
+	})
+	backdrop("OceanRays", oceanUrl, {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, -0.05, 0),
+		Size = UDim2.new(1.1, 0, 1.1, 0),
+		ImageTransparency = 0.55,
+		ImageColor3 = Color3.fromRGB(150, 230, 255),
+	})
+	backdrop("OceanSeaweed", seaweedUrl, {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0.01, 0, 1, 2),
+		Size = UDim2.fromOffset(84, 190),
+		ImageTransparency = 0.28,
+		ScaleType = Enum.ScaleType.Fit,
+	})
+	backdrop("GlassFrost", frostUrl, {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 0.72,
+	})
+	backdrop("GlassSheen", sheenUrl, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.42, 0, 0.46, 0),
+		Size = UDim2.new(0.6, 0, 1.5, 0),
+		Rotation = -16,
+		ImageTransparency = 0.64,
+	})
+	backdrop("GlassReflection", reflectionUrl, {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, 96),
+		ImageTransparency = 0.32,
+	})
+	backdrop("NeonGrid", gridUrl, {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 0.45,
+		ImageColor3 = Theme.Accent,
+	})
+	backdrop("NeonSweep", sweepUrl, {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, -0.01, 0),
+		Size = UDim2.new(1.15, 0, 0, 26),
+		ImageTransparency = 0.5,
+		ImageColor3 = Theme.Accent,
+	})
+	backdrop("NeonScanlines", scanUrl, {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 0.35,
+	})
+	backdrop("AuroraBackdrop", auroraUrl, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.42, 0),
+		Size = UDim2.new(1.25, 0, 1.35, 0),
+		ImageTransparency = 0.05,
+	})
+	backdrop("AuroraStars", starsUrl, {
+		Size = UDim2.new(1, 0, 1, 0),
+		ImageTransparency = 0.25,
+	})
+
+	local glassPane = New("Frame", {
+		Name = "GlassPane",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(1, -12, 1, -12),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.93,
+		BorderSizePixel = 0,
+		ZIndex = 0,
+		Visible = false,
+		Parent = decor,
+	})
+	Corner(glassPane, 9)
+	local glassPaneStroke = New("UIStroke", {
+		Color = Color3.fromRGB(255, 255, 255),
+		Transparency = 0.55,
+		Thickness = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = glassPane,
+	})
+	refs.glassPane = glassPane
+	local glassPane2 = New("Frame", {
+		Name = "GlassPaneInner",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(1, -26, 1, -26),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.975,
+		BorderSizePixel = 0,
+		ZIndex = 0,
+		Visible = false,
+		Parent = decor,
+	})
+	Corner(glassPane2, 7)
+	refs.glassPane2 = glassPane2
+	local glassOutline = New("Frame", {
+		Name = "GlassOutline",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(1, -20, 1, -20),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 58,
+		Visible = false,
+		Parent = fg,
+	})
+	Corner(glassOutline, 9)
+	local glassOutlineStroke = New("UIStroke", {
+		Color = Color3.fromRGB(255, 255, 255),
+		Transparency = 0.62,
+		Thickness = 1,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = glassOutline,
+	})
+	refs.glassOutline = glassOutline
+	if refs.NeonSweep then refs.NeonSweep.Parent = fg end
+	if refs.NeonGrid then
+		refs.NeonGrid.Parent = fg
+		refs.NeonGrid.ImageTransparency = 0.62
+	end
+	if refs.NeonScanlines then refs.NeonScanlines.Parent = fg end
+
 	if hatUrl then
 		refs.hat = New("ImageLabel", {
 			Name = "HalloweenHat",
-			Size = UDim2.fromOffset(58, 58),
-			Position = UDim2.new(0, 10, 0, -8),
-			Rotation = -18,
+			Size = UDim2.fromOffset(62, 62),
+			Position = UDim2.new(0, 6, 0, -12),
+			Rotation = -20,
 			BackgroundTransparency = 1,
 			Image = hatUrl,
 			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 50,
+			ZIndex = 60,
 			Parent = fg,
 		})
 	end
@@ -980,38 +1036,51 @@ local function BuildThemeDecorations(parent, bindTheme)
 		refs.web = New("ImageLabel", {
 			Name = "Cobweb",
 			AnchorPoint = Vector2.new(1, 0),
-			Position = UDim2.new(1, 6, 0, -10),
-			Size = UDim2.fromOffset(82, 82),
+			Position = UDim2.new(1, 8, 0, -12),
+			Size = UDim2.fromOffset(92, 92),
 			BackgroundTransparency = 1,
 			Image = webUrl,
 			ImageColor3 = Color3.fromRGB(235, 235, 245),
-			ImageTransparency = 0.3,
+			ImageTransparency = 0.22,
 			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 50,
+			ZIndex = 60,
 			Parent = fg,
 		})
 	end
 	refs.skull = New("ImageLabel", {
 		Name = "SkullOrnament",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -18, 0, 6),
-		Size = UDim2.fromOffset(16, 16),
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -16, 1, -14),
+		Size = UDim2.fromOffset(20, 20),
 		BackgroundTransparency = 1,
 		Image = LucideIcons["skull"],
 		ImageColor3 = Theme.Accent,
 		ScaleType = Enum.ScaleType.Fit,
-		ZIndex = 50,
+		ZIndex = 60,
 		Parent = fg,
 	})
+	if pumpkinUrl then
+		refs.pumpkin = New("ImageLabel", {
+			Name = "HalloweenPumpkin",
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -54, 1, -12),
+			Size = UDim2.fromOffset(50, 50),
+			BackgroundTransparency = 1,
+			Image = pumpkinUrl,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 60,
+			Parent = fg,
+		})
+	end
 	if bubbleUrl then
-		for i = 1, 8 do
+		for i = 1, 10 do
 			local b = New("ImageLabel", {
 				Name = "Bubble",
-				Size = UDim2.fromOffset(12 + i * 3, 12 + i * 3),
+				Size = UDim2.fromOffset(10 + i * 2.4, 10 + i * 2.4),
 				BackgroundTransparency = 1,
 				Image = bubbleUrl,
-				ImageColor3 = Color3.fromRGB(220, 170, 255),
-				ImageTransparency = 0.4,
+				ImageColor3 = Theme.Accent,
+				ImageTransparency = 0.35,
 				ZIndex = 0,
 				Parent = decor,
 			})
@@ -1020,13 +1089,13 @@ local function BuildThemeDecorations(parent, bindTheme)
 		end
 	end
 	if particleUrl then
-		for i = 1, 12 do
+		for i = 1, 14 do
 			local p = New("ImageLabel", {
 				Name = "Particle",
-				Size = UDim2.fromOffset(8, 8),
+				Size = UDim2.fromOffset(6 + (i % 3) * 2, 6 + (i % 3) * 2),
 				BackgroundTransparency = 1,
 				Image = particleUrl,
-				ImageTransparency = 0.15,
+				ImageTransparency = 0.12,
 				ZIndex = 0,
 				Parent = decor,
 			})
@@ -1034,27 +1103,58 @@ local function BuildThemeDecorations(parent, bindTheme)
 			refs.particles[i] = p
 		end
 	end
+
 	refs.active = false
 	refs.apply = function()
-		local halloween = (themeName == "Halloween") or (activeStyle == "Halloween")
-		local glassy = (themeName == "Liquid Glass") or (activeStyle == "Liquid Glass") or (activeStyle == "Aurora")
-		local sakura = (themeName == "Sakura Midnight")
-		refs.active = true
-		decor.Visible = true
-		if refs.front then refs.front.Visible = halloween end
+		local style = activeStyle
+		local halloween = style == "Halloween"
+		local ocean = style == "Deep Ocean"
+		local glass = style == "Liquid Glass"
+		local neon = style == "Neon"
+		local aurora = style == "Aurora"
+		local minimal = style == "Minimal"
+		refs.active = not minimal
+		decor.Visible = not minimal
+		fg.Visible = not minimal
+		if refs.glassOutline then refs.glassOutline.Visible = glass end
+		if refs.HalloweenHaze then refs.HalloweenHaze.Visible = halloween end
+		if refs.HalloweenMoon then refs.HalloweenMoon.Visible = halloween end
+		if refs.HalloweenBats then refs.HalloweenBats.Visible = halloween end
+		if refs.HalloweenFog then refs.HalloweenFog.Visible = halloween end
+		if refs.OceanBackdrop then refs.OceanBackdrop.Visible = ocean end
+		if refs.OceanRays then refs.OceanRays.Visible = ocean end
+		if refs.OceanSeaweed then refs.OceanSeaweed.Visible = ocean end
+		if refs.GlassFrost then refs.GlassFrost.Visible = glass end
+		if refs.GlassSheen then refs.GlassSheen.Visible = glass end
+		if refs.GlassReflection then refs.GlassReflection.Visible = glass end
+		if refs.NeonGrid then refs.NeonGrid.Visible = neon end
+		if refs.NeonSweep then refs.NeonSweep.Visible = neon end
+		if refs.NeonScanlines then refs.NeonScanlines.Visible = neon end
+		if refs.AuroraBackdrop then refs.AuroraBackdrop.Visible = aurora end
+		if refs.AuroraStars then refs.AuroraStars.Visible = aurora end
+		if refs.glassPane then refs.glassPane.Visible = glass end
+		if refs.glassPane2 then refs.glassPane2.Visible = glass end
 		if refs.hat then refs.hat.Visible = halloween end
 		if refs.web then refs.web.Visible = halloween end
 		if refs.skull then
 			refs.skull.Visible = halloween
 			refs.skull.ImageColor3 = Theme.Accent
 		end
+		if refs.pumpkin then refs.pumpkin.Visible = halloween end
+		if refs.NeonGrid then refs.NeonGrid.ImageColor3 = Theme.Accent end
+		if refs.NeonSweep then refs.NeonSweep.ImageColor3 = Theme.Accent end
+		if refs.OceanRays then refs.OceanRays.ImageColor3 = Theme.Accent:Lerp(Color3.new(1, 1, 1), 0.6) end
+		if glassPaneStroke then glassPaneStroke.Color = Theme.Text:Lerp(Color3.new(1, 1, 1), 0.7) end
+		if glassOutlineStroke then glassOutlineStroke.Color = Theme.Text:Lerp(Color3.new(1, 1, 1), 0.72) end
 		for _, b in ipairs(refs.bubbles) do
-			b.Visible = halloween or glassy or sakura
-			b.ImageColor3 = Theme.Accent
+			b.Visible = halloween or ocean or glass or aurora
+			b.ImageColor3 = Theme.Accent:Lerp(Color3.new(1, 1, 1), 0.28)
+			b.ImageTransparency = (glass and 0.38) or (aurora and 0.4) or (ocean and 0.16) or 0.3
 		end
 		for _, p in ipairs(refs.particles) do
-			p.Visible = true
+			p.Visible = not minimal
 			p.ImageColor3 = Theme.Accent
+			p.ImageTransparency = (neon and 0.05) or (aurora and 0.18) or 0.12
 		end
 	end
 	if bindTheme then bindTheme(refs.apply) end
@@ -1066,20 +1166,36 @@ local function BuildThemeDecorations(parent, bindTheme)
 			if refs.active then
 				t = t + 0.05
 				for _, b in ipairs(refs.bubbles) do
-					local y = b.Position.Y.Scale - 0.005
+					local y = b.Position.Y.Scale - 0.0045
 					if y < -0.1 then
 						y = 1.05
 						b.Position = UDim2.new(math.random(), 0, y, 0)
 					end
 					b.Position = UDim2.new(b.Position.X.Scale, 0, y, 0)
 				end
-				for _, p in ipairs(refs.particles) do
-					local y = p.Position.Y.Scale - 0.003
+				for i, p in ipairs(refs.particles) do
+					local y = p.Position.Y.Scale - 0.0028
 					if y < -0.05 then
 						y = 1.02
 						p.Position = UDim2.new(math.random(), 0, y, 0)
 					end
-					p.Position = UDim2.new(p.Position.X.Scale, 0, y, 0)
+					local x = p.Position.X.Scale + math.sin(t * 0.8 + i) * 0.0007
+					if x < 0 then x = 0.98 elseif x > 1 then x = 0.02 end
+					p.Position = UDim2.new(x, 0, y, 0)
+				end
+				if refs.NeonSweep then
+					local x = (math.sin(t * 0.9) + 1) * 0.5
+					refs.NeonSweep.Position = UDim2.new(x, 0, -0.02, 0)
+				end
+				if refs.GlassSheen then
+					refs.GlassSheen.Position = UDim2.new(-0.25 + ((t * 0.11) % 1) * 1.45, 0, 0.46, 0)
+				end
+				if refs.AuroraBackdrop then
+					refs.AuroraBackdrop.Position = UDim2.new(0.5 + math.sin(t * 0.22) * 0.025, 0, 0.42 + math.cos(t * 0.17) * 0.012, 0)
+					refs.AuroraBackdrop.ImageTransparency = 0.05 + (math.sin(t * 0.6) + 1) * 0.025
+				end
+				if refs.HalloweenFog then
+					refs.HalloweenFog.Position = UDim2.new(0.5 + math.sin(t * 0.3) * 0.03, 0, 1, 4)
 				end
 			end
 		end
@@ -1345,8 +1461,8 @@ local function readGlobals()
 	if type(decoded.Theme) == "string" and THEMES[decoded.Theme] then
 		base.Theme = decoded.Theme
 	end
-	if type(decoded.Style) == "string" and STYLES[decoded.Style] then
-		base.Style = decoded.Style
+	if type(decoded.Style) == "string" then
+		base.Style = normalizeStyleName(decoded.Style)
 	end
 	if decoded.UIMode == "Legacy" or decoded.UIMode == "Modern" then
 		base.UIMode = decoded.UIMode
@@ -1503,6 +1619,7 @@ function Library:Window() return activeWindow end
 function Library:GetTheme() return themeName end
 function Library:SetTheme(name)
 	local applied = SetThemeLocal(name)
+	if activeWindow and activeWindow._themeDd then activeWindow._themeDd:SetSilent(applied) end
 	return applied
 end
 function Library:GetThemeNames()
@@ -1512,7 +1629,9 @@ function Library:GetThemeNames()
 end
 function Library:GetStyle() return activeStyle end
 function Library:SetStyle(name)
-	return SetStyleLocal(name)
+	local applied = SetStyleLocal(name)
+	if activeWindow and activeWindow._styleDd then activeWindow._styleDd:SetSilent(applied) end
+	return applied
 end
 function Library:GetStyleNames()
 	local out = {}
@@ -1587,7 +1706,7 @@ function Library:CreateWindow(opts)
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = size,
 		BackgroundColor3 = Theme.Background,
-		BackgroundTransparency = 0.15,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		GroupTransparency = 1,
 		Active = true,
@@ -1609,9 +1728,43 @@ function Library:CreateWindow(opts)
 		end
 	end
 	bindTheme(function()
+		local style = activeStyle
 		Main.BackgroundColor3 = Theme.Background
+		Main.BackgroundTransparency = 0
 		mainStroke.Color = Theme.GroupStroke
 		accentStroke.Color = Theme.Accent
+		if style == "Neon" then
+			mainStroke.Color = Theme.Accent
+			mainStroke.Transparency = 0.05
+			mainStroke.Thickness = 2
+			accentStroke.Transparency = 0.68
+			accentStroke.Thickness = 7
+		elseif style == "Halloween" then
+			mainStroke.Transparency = 0.2
+			mainStroke.Thickness = 1
+			accentStroke.Transparency = 0.22
+			accentStroke.Thickness = 3
+		elseif style == "Deep Ocean" then
+			mainStroke.Transparency = 0.38
+			mainStroke.Thickness = 1
+			accentStroke.Transparency = 0.58
+			accentStroke.Thickness = 2
+		elseif style == "Liquid Glass" then
+			mainStroke.Transparency = 0.15
+			mainStroke.Thickness = 1
+			accentStroke.Transparency = 0.46
+			accentStroke.Thickness = 1
+		elseif style == "Aurora" then
+			mainStroke.Transparency = 0.32
+			mainStroke.Thickness = 1
+			accentStroke.Transparency = 0.62
+			accentStroke.Thickness = 3
+		else
+			mainStroke.Transparency = 0.62
+			mainStroke.Thickness = 1
+			accentStroke.Transparency = 1
+			accentStroke.Thickness = 1
+		end
 	end)
 	local decorRefs = BuildThemeDecorations(Main, bindTheme)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
@@ -6715,7 +6868,7 @@ local gearBtn = IconButton(Header, 28, 7)
 			SetNotifyLocation(v)
 		end,
 	})
-	panelLabel("UI Theme", 5)
+	panelLabel("Color Theme", 5)
 	themeDdObj = BuildDropdown(panelScroll, 6, {
 		Name = "Theme",
 		NoKeybinds = true,
@@ -6723,6 +6876,18 @@ local gearBtn = IconButton(Header, 28, 7)
 		Default = themeName,
 		Callback = function(v)
 			SetThemeLocal(v)
+			if saveGlobalsSoon then saveGlobalsSoon() end
+		end,
+	})
+	Window._themeDd = themeDdObj
+	panelLabel("Visual Style", 11)
+	Window._styleDd = BuildDropdown(panelScroll, 12, {
+		Name = "Visual Style",
+		NoKeybinds = true,
+		Options = STYLE_ORDER,
+		Default = activeStyle,
+		Callback = function(v)
+			SetStyleLocal(v)
 			if saveGlobalsSoon then saveGlobalsSoon() end
 		end,
 	})
@@ -6734,16 +6899,6 @@ local gearBtn = IconButton(Header, 28, 7)
 		Default = uiMode,
 		Callback = function(v)
 			applyUIMode(v)
-		end,
-	})
-	Window._styleDd = BuildDropdown(panelScroll, 15, {
-		Name = "Visual Style",
-		NoKeybinds = true,
-		Options = STYLE_ORDER,
-		Default = activeStyle,
-		Callback = function(v)
-			SetStyleLocal(v)
-			if saveGlobalsSoon then saveGlobalsSoon() end
 		end,
 	})
 	do
@@ -7328,9 +7483,9 @@ local gearBtn = IconButton(Header, 28, 7)
 			applyThemeTokens(G.Theme)
 			if themeDdObj then themeDdObj:SetSilent(G.Theme) end
 		end
-		if G.Style and STYLES[G.Style] then
-			SetStyleLocal(G.Style)
-			if Window._styleDd then Window._styleDd:SetSilent(G.Style) end
+		if G.Style then
+			local restoredStyle = SetStyleLocal(G.Style)
+			if Window._styleDd then Window._styleDd:SetSilent(restoredStyle) end
 		end
 		if G.UIMode == "Legacy" or G.UIMode == "Modern" then
 			applyUIMode(G.UIMode)

@@ -775,6 +775,38 @@ local function New(className, props, children)
 	end
 	return inst
 end
+local function ApplyTabLayout(tabsList, modern)
+	for _, t in ipairs(tabsList or {}) do
+		local btn = t.Button
+		if btn then
+			if modern then
+				btn.Size = UDim2.fromOffset(34, 34)
+				if t.IconRef then
+					t.IconRef.AnchorPoint = Vector2.new(0.5, 0.5)
+					t.IconRef.Position = UDim2.new(0.5, 0, 0.5, 0)
+				end
+				if t.Label then t.Label.Visible = false end
+				if t.Indicator then t.Indicator.Visible = false end
+			else
+				btn.Size = UDim2.new(1, -10, 0, 34)
+				if t.IconRef then
+					t.IconRef.AnchorPoint = Vector2.new(0, 0.5)
+					t.IconRef.Position = UDim2.new(0, 10, 0.5, 0)
+				end
+				if t.Label then
+					t.Label.Visible = true
+					t.Label.Position = UDim2.new(0, 36, 0.5, 0)
+					t.Label.Size = UDim2.new(1, -44, 1, 0)
+				end
+				if t.Indicator then
+					t.Indicator.AnchorPoint = Vector2.new(0, 0.5)
+					t.Indicator.Position = UDim2.new(0, 2, 0.5, 0)
+					t.Indicator.Size = UDim2.fromOffset(3, 18)
+				end
+			end
+		end
+	end
+end
 local function Tween(obj, info, props)
 	TweenService:Create(obj, info or TWEEN_FAST, props):Play()
 end
@@ -823,6 +855,8 @@ local function BuildThemeDecorations(parent, bindTheme)
 	local webUrl = loadThemeAsset("cobweb.png")
 	local bubbleUrl = loadThemeAsset("bubble.png")
 	local particleUrl = loadThemeAsset("particle.png")
+	local ghostUrl = loadThemeAsset("halloween_ghost.png")
+	local flameUrl = loadThemeAsset("halloween_flame.png")
 	local hazeUrl = loadThemeAsset("halloween_haze.png")
 	local moonUrl = loadThemeAsset("halloween_moon.png")
 	local batsUrl = loadThemeAsset("halloween_bats.png")
@@ -852,7 +886,7 @@ local function BuildThemeDecorations(parent, bindTheme)
 		Name = "DecorationsFront",
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
-		ClipsDescendants = true,
+		ClipsDescendants = false,
 		ZIndex = 60,
 		Parent = parent,
 	})
@@ -878,9 +912,9 @@ local function BuildThemeDecorations(parent, bindTheme)
 	})
 	backdrop("HalloweenMoon", moonUrl, {
 		AnchorPoint = Vector2.new(0, 0),
-		Position = UDim2.new(0, 18, 0, 16),
+		Position = UDim2.new(0.66, 0, 0.08, 0),
 		Size = UDim2.fromOffset(150, 150),
-		ImageTransparency = 0.05,
+		ImageTransparency = 0.15,
 		ScaleType = Enum.ScaleType.Fit,
 	})
 	backdrop("HalloweenBats", batsUrl, {
@@ -1022,13 +1056,14 @@ local function BuildThemeDecorations(parent, bindTheme)
 	if hatUrl then
 		refs.hat = New("ImageLabel", {
 			Name = "HalloweenHat",
-			Size = UDim2.fromOffset(62, 62),
-			Position = UDim2.new(0, 6, 0, -12),
-			Rotation = -20,
+			AnchorPoint = Vector2.new(0, 0),
+			Size = UDim2.fromOffset(48, 48),
+			Position = UDim2.new(0, 2, 0, 2),
+			Rotation = -15,
 			BackgroundTransparency = 1,
 			Image = hatUrl,
 			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 60,
+			ZIndex = 61,
 			Parent = fg,
 		})
 	end
@@ -1068,6 +1103,30 @@ local function BuildThemeDecorations(parent, bindTheme)
 			BackgroundTransparency = 1,
 			Image = pumpkinUrl,
 			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 60,
+			Parent = fg,
+		})
+	end
+	if ghostUrl then
+		refs.ghost = New("ImageLabel", {
+			Name = "HalloweenGhost",
+			Position = UDim2.new(0.36, 0, 0.52, 0),
+			Size = UDim2.fromOffset(22, 22),
+			BackgroundTransparency = 1,
+			Image = ghostUrl,
+			ImageTransparency = 0.15,
+			ZIndex = 60,
+			Parent = fg,
+		})
+	end
+	if flameUrl then
+		refs.flame = New("ImageLabel", {
+			Name = "HalloweenFlame",
+			Position = UDim2.new(0.60, 0, 0.53, 0),
+			Size = UDim2.fromOffset(18, 18),
+			BackgroundTransparency = 1,
+			Image = flameUrl,
+			ImageTransparency = 0.12,
 			ZIndex = 60,
 			Parent = fg,
 		})
@@ -1141,6 +1200,8 @@ local function BuildThemeDecorations(parent, bindTheme)
 			refs.skull.ImageColor3 = Theme.Accent
 		end
 		if refs.pumpkin then refs.pumpkin.Visible = halloween end
+		if refs.ghost then refs.ghost.Visible = halloween end
+		if refs.flame then refs.flame.Visible = halloween end
 		if refs.NeonGrid then refs.NeonGrid.ImageColor3 = Theme.Accent end
 		if refs.NeonSweep then refs.NeonSweep.ImageColor3 = Theme.Accent end
 		if refs.OceanRays then refs.OceanRays.ImageColor3 = Theme.Accent:Lerp(Color3.new(1, 1, 1), 0.6) end
@@ -1770,7 +1831,7 @@ function Library:CreateWindow(opts)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
-	local DOCK = { W = 72, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }
+	local DOCK = { W = 72, LEGACY_W = 140, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }
 	local uiMode = "Legacy"
 	local tabs = {}
 	local tabTooltips = {}
@@ -2744,22 +2805,23 @@ end
 				Dock.AnchorPoint = Vector2.new(0, 0)
 				Dock.Position = UDim2.new(0, 0, 0, 0)
 				Dock.BackgroundTransparency = 1
-				Dock.Size = UDim2.new(0, DOCK.W, 1, 0)
+				Dock.Size = UDim2.new(0, DOCK.LEGACY_W, 1, 0)
 				if dockStroke then dockStroke.Transparency = 1 end
 				if dockCorner then dockCorner.CornerRadius = UDim.new(0, 0) end
 				dockScale.Scale = 1
 				Dock.Visible = uiVisible
 				Dock.GroupTransparency = uiVisible and 0 or 1
-				Content.Position = UDim2.new(0, DOCK.W + 18, 0, HEADER_H + 12)
-				Content.Size = UDim2.new(1, -(DOCK.W + 36), 1, -(HEADER_H + 12))
-				Header.Position = UDim2.new(0, DOCK.W, 0, 0)
-				Header.Size = UDim2.new(1, -DOCK.W, 0, HEADER_H)
+				Content.Position = UDim2.new(0, DOCK.LEGACY_W + 18, 0, HEADER_H + 12)
+				Content.Size = UDim2.new(1, -(DOCK.LEGACY_W + 36), 1, -(HEADER_H + 12))
+				Header.Position = UDim2.new(0, DOCK.LEGACY_W, 0, 0)
+				Header.Size = UDim2.new(1, -DOCK.LEGACY_W, 0, HEADER_H)
 				if headerDivider then
-					headerDivider.Position = UDim2.new(0, DOCK.W + 18, 0, HEADER_H - 6)
-					headerDivider.Size = UDim2.new(1, -(DOCK.W + 36), 0, 12)
+					headerDivider.Position = UDim2.new(0, DOCK.LEGACY_W + 18, 0, HEADER_H - 6)
+					headerDivider.Size = UDim2.new(1, -(DOCK.LEGACY_W + 36), 0, 12)
 				end
 			end
 		end
+		ApplyTabLayout(tabs, modern)
 		if saveGlobalsSoon then saveGlobalsSoon() end
 	end
 	applyUIMode(uiMode)
@@ -5849,6 +5911,13 @@ local bellBtn = IconButton(head, 26)
 				BackgroundTransparency = selected and 0 or 1,
 			})
 			t.NameLabel.TextColor3 = Theme.TextSoft
+			if t.Label then
+				t.Label.TextColor3 = selected and Theme.Text or Theme.TextDim
+			end
+			if t.Indicator then
+				t.Indicator.BackgroundColor3 = Theme.Accent
+				t.Indicator.Visible = selected and uiMode ~= "Modern"
+			end
 			if t.IconRef then
 				if t.IconRef:IsA("ImageLabel") then
 					Tween(t.IconRef, TWEEN_FAST, { ImageColor3 = selected and Theme.Text or Theme.TextDim })
@@ -5903,6 +5972,31 @@ function Window:AddTab(tabOpts)
 		local iconRef = MakeIcon(button, iconKey, 18, Theme.TextDim)
 		iconRef.AnchorPoint = Vector2.new(0.5, 0.5)
 		iconRef.Position = UDim2.new(0.5, 0, 0.5, 0)
+		local indicator = New("Frame", {
+			Name = "Indicator",
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 2, 0.5, 0),
+			Size = UDim2.fromOffset(3, 18),
+			BackgroundColor3 = Theme.Accent,
+			BorderSizePixel = 0,
+			Visible = false,
+			Parent = button,
+		})
+		Corner(indicator, 2)
+		local tabLabel = New("TextLabel", {
+			Name = "Label",
+			Position = UDim2.new(0, 36, 0.5, 0),
+			Size = UDim2.new(1, -44, 1, 0),
+			BackgroundTransparency = 1,
+			Text = Tab.Name,
+			FontFace = FONT_SEMIBOLD,
+			TextSize = 13,
+			TextColor3 = Theme.TextDim,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			Visible = false,
+			Parent = button,
+		})
 		local nameLabel = New("TextLabel", {
 			Name = "Tip_" .. Tab.Name,
 			AnchorPoint = Vector2.new(0, 0.5),
@@ -5931,8 +6025,10 @@ function Window:AddTab(tabOpts)
 			nameLabel.Position = UDim2.new(0, dx, 0, dy)
 		end
 		button.MouseEnter:Connect(function()
-			nameLabel.Visible = true
-			placeTip()
+			if uiMode == "Modern" then
+				nameLabel.Visible = true
+				placeTip()
+			end
 		end)
 		button.MouseLeave:Connect(function()
 			nameLabel.Visible = false
@@ -5945,6 +6041,9 @@ function Window:AddTab(tabOpts)
 			nameLabel.TextColor3 = Theme.TextSoft
 			nameLabel.BackgroundColor3 = Theme.Group
 			tipStroke.Color = Theme.GroupStroke
+			tabLabel.TextColor3 = sel and Theme.Text or Theme.TextDim
+			indicator.BackgroundColor3 = Theme.Accent
+			indicator.Visible = sel and uiMode ~= "Modern"
 			if iconRef:IsA("ImageLabel") then
 				iconRef.ImageColor3 = sel and Theme.Text or Theme.TextDim
 			elseif iconRef:IsA("Frame") then
@@ -6027,6 +6126,9 @@ function Window:AddTab(tabOpts)
 		Tab.Button = button
 		Tab.NameLabel = nameLabel
 		Tab.IconRef = iconRef
+		Tab.Label = tabLabel
+		Tab.Indicator = indicator
+		ApplyTabLayout({ Tab }, uiMode == "Modern")
 		Tab.Modules = {}
 		function Tab:AddModule(mOpts)
 			mOpts = mOpts or {}

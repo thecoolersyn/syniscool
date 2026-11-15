@@ -60,18 +60,23 @@ movSec:AddButton({
 	end,
 })
 
-for i = 1, 6 do
-	local t = Window:AddTab({ Name = "Guard Test " .. i, Icon = "list" })
-	local sec = t:AddSection({ Name = "Guard Test " .. i })
-	sec:AddLabel({ Text = "Content marker for Guard Test " .. i })
+local tabNames = {
+	{ Name = "Visuals", Icon = "eye" },
+	{ Name = "Player", Icon = "user" },
+	{ Name = "Sword", Icon = "sword" },
+	{ Name = "Avatar", Icon = "users" },
+	{ Name = "World", Icon = "globe" },
+	{ Name = "Blatant", Icon = "skull" },
+}
+for _, tDef in ipairs(tabNames) do
+	local t = Window:AddTab({ Name = tDef.Name, Icon = tDef.Icon })
+	local sec = t:AddSection({ Name = tDef.Name })
+	sec:AddLabel({ Text = "Content marker for " .. tDef.Name })
 end
 Window:AddTab({ Name = "Misc", Section = "Combat" })
 	:AddSection({ Name = "Extra" })
-
-Window:AddTab({ Name = "Main", Icon = "camera", Section = "Visuals" })
-	:AddSection({ Name = "ESP" })
-Window:AddTab({ Name = "Main", Icon = "skull", Section = "Exclusive" })
-	:AddSection({ Name = "Identity Hider" })
+Window:AddTab({ Name = "Configs", Section = "Configs" })
+	:AddSection({ Name = "Profiles" })
 Window:AddTab({ Name = "Main", Icon = "combat", Section = "Exclusive" })
 	:AddSection({ Name = "Identity Hider" })
 

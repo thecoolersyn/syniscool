@@ -9,6 +9,7 @@ local DEFAULT_THEME = "Default"
 local THEME_ORDER = {
 	"Default", "Cobalt", "Night", "Wave", "Vapor", "Frost",
 	"Midnight", "Obsidian", "Crimson", "Emerald", "Rose", "Slate",
+	"Dracula", "Nord", "Catppuccin", "AMOLED", "Cyberpunk",
 }
 local THEMES = {
 	Default = {
@@ -348,9 +349,219 @@ local THEMES = {
 			Color3.fromRGB(144, 168, 198),
 		},
 	},
+	Dracula = {
+		Background   = Color3.fromRGB(40, 42, 54),
+		Group        = Color3.fromRGB(52, 55, 70),
+		GroupStroke  = Color3.fromRGB(98, 114, 164),
+		Control      = Color3.fromRGB(68, 71, 90),
+		ControlHover = Color3.fromRGB(80, 84, 106),
+		Divider      = Color3.fromRGB(60, 63, 82),
+		Text         = Color3.fromRGB(248, 248, 242),
+		TextDim      = Color3.fromRGB(166, 170, 200),
+		TextSoft     = Color3.fromRGB(220, 220, 235),
+		HeaderText   = Color3.fromRGB(140, 145, 180),
+		TabSelected  = Color3.fromRGB(58, 61, 82),
+		PillOff      = Color3.fromRGB(80, 84, 106),
+		KnobOff      = Color3.fromRGB(200, 200, 220),
+		PillOn       = Color3.fromRGB(189, 147, 249),
+		KnobOn       = Color3.fromRGB(40, 42, 54),
+		SliderTrack  = Color3.fromRGB(68, 71, 90),
+		SliderFill   = Color3.fromRGB(255, 121, 198),
+		Scrollbar    = Color3.fromRGB(90, 94, 130),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		Accent       = Color3.fromRGB(189, 147, 249),
+		TitleGradient = {
+			Color3.fromRGB(189, 147, 249),
+			Color3.fromRGB(255, 121, 198),
+			Color3.fromRGB(20, 18, 30),
+			Color3.fromRGB(189, 147, 249),
+		},
+	},
+	Nord = {
+		Background   = Color3.fromRGB(46, 52, 64),
+		Group        = Color3.fromRGB(59, 66, 82),
+		GroupStroke  = Color3.fromRGB(76, 86, 106),
+		Control      = Color3.fromRGB(67, 76, 94),
+		ControlHover = Color3.fromRGB(80, 90, 110),
+		Divider      = Color3.fromRGB(62, 70, 88),
+		Text         = Color3.fromRGB(236, 239, 244),
+		TextDim      = Color3.fromRGB(160, 170, 190),
+		TextSoft     = Color3.fromRGB(216, 222, 233),
+		HeaderText   = Color3.fromRGB(130, 145, 170),
+		TabSelected  = Color3.fromRGB(59, 66, 82),
+		PillOff      = Color3.fromRGB(67, 76, 94),
+		KnobOff      = Color3.fromRGB(190, 200, 215),
+		PillOn       = Color3.fromRGB(136, 192, 208),
+		KnobOn       = Color3.fromRGB(46, 52, 64),
+		SliderTrack  = Color3.fromRGB(67, 76, 94),
+		SliderFill   = Color3.fromRGB(136, 192, 208),
+		Scrollbar    = Color3.fromRGB(80, 92, 112),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		Accent       = Color3.fromRGB(136, 192, 208),
+		TitleGradient = {
+			Color3.fromRGB(136, 192, 208),
+			Color3.fromRGB(150, 160, 180),
+			Color3.fromRGB(12, 14, 20),
+			Color3.fromRGB(136, 192, 208),
+		},
+	},
+	Catppuccin = {
+		Background   = Color3.fromRGB(30, 30, 46),
+		Group        = Color3.fromRGB(49, 50, 68),
+		GroupStroke  = Color3.fromRGB(88, 91, 112),
+		Control      = Color3.fromRGB(58, 59, 80),
+		ControlHover = Color3.fromRGB(70, 72, 96),
+		Divider      = Color3.fromRGB(52, 53, 72),
+		Text         = Color3.fromRGB(205, 214, 244),
+		TextDim      = Color3.fromRGB(150, 158, 190),
+		TextSoft     = Color3.fromRGB(190, 198, 230),
+		HeaderText   = Color3.fromRGB(130, 138, 175),
+		TabSelected  = Color3.fromRGB(58, 59, 80),
+		PillOff      = Color3.fromRGB(70, 72, 96),
+		KnobOff      = Color3.fromRGB(190, 198, 225),
+		PillOn       = Color3.fromRGB(203, 166, 247),
+		KnobOn       = Color3.fromRGB(30, 30, 46),
+		SliderTrack  = Color3.fromRGB(58, 59, 80),
+		SliderFill   = Color3.fromRGB(245, 224, 175),
+		Scrollbar    = Color3.fromRGB(80, 84, 110),
+		CardTransparency   = 0.4,
+		NotifyTransparency = 0.4,
+		Accent       = Color3.fromRGB(203, 166, 247),
+		TitleGradient = {
+			Color3.fromRGB(203, 166, 247),
+			Color3.fromRGB(245, 224, 175),
+			Color3.fromRGB(14, 14, 24),
+			Color3.fromRGB(203, 166, 247),
+		},
+	},
+	AMOLED = {
+		Background   = Color3.fromRGB(0, 0, 0),
+		Group        = Color3.fromRGB(10, 10, 12),
+		GroupStroke  = Color3.fromRGB(28, 30, 40),
+		Control      = Color3.fromRGB(18, 18, 22),
+		ControlHover = Color3.fromRGB(28, 28, 34),
+		Divider      = Color3.fromRGB(20, 20, 26),
+		Text         = Color3.fromRGB(240, 245, 250),
+		TextDim      = Color3.fromRGB(130, 140, 155),
+		TextSoft     = Color3.fromRGB(200, 210, 225),
+		HeaderText   = Color3.fromRGB(110, 120, 140),
+		TabSelected  = Color3.fromRGB(14, 14, 18),
+		PillOff      = Color3.fromRGB(24, 24, 30),
+		KnobOff      = Color3.fromRGB(180, 190, 205),
+		PillOn       = Color3.fromRGB(0, 229, 255),
+		KnobOn       = Color3.fromRGB(0, 0, 0),
+		SliderTrack  = Color3.fromRGB(20, 20, 26),
+		SliderFill   = Color3.fromRGB(0, 229, 255),
+		Scrollbar    = Color3.fromRGB(40, 42, 52),
+		CardTransparency   = 0.35,
+		NotifyTransparency = 0.35,
+		Accent       = Color3.fromRGB(0, 229, 255),
+		TitleGradient = {
+			Color3.fromRGB(0, 229, 255),
+			Color3.fromRGB(120, 160, 190),
+			Color3.fromRGB(0, 0, 0),
+			Color3.fromRGB(0, 229, 255),
+		},
+	},
+	Cyberpunk = {
+		Background   = Color3.fromRGB(10, 10, 20),
+		Group        = Color3.fromRGB(20, 20, 40),
+		GroupStroke  = Color3.fromRGB(255, 0, 200),
+		Control      = Color3.fromRGB(28, 28, 52),
+		ControlHover = Color3.fromRGB(40, 40, 68),
+		Divider      = Color3.fromRGB(30, 30, 55),
+		Text         = Color3.fromRGB(235, 245, 255),
+		TextDim      = Color3.fromRGB(150, 160, 200),
+		TextSoft     = Color3.fromRGB(200, 220, 255),
+		HeaderText   = Color3.fromRGB(120, 200, 230),
+		TabSelected  = Color3.fromRGB(28, 28, 52),
+		PillOff      = Color3.fromRGB(40, 40, 68),
+		KnobOff      = Color3.fromRGB(190, 210, 235),
+		PillOn       = Color3.fromRGB(255, 0, 200),
+		KnobOn       = Color3.fromRGB(10, 10, 20),
+		SliderTrack  = Color3.fromRGB(28, 28, 52),
+		SliderFill   = Color3.fromRGB(0, 240, 255),
+		Scrollbar    = Color3.fromRGB(50, 50, 90),
+		CardTransparency   = 0.38,
+		NotifyTransparency = 0.38,
+		Accent       = Color3.fromRGB(0, 240, 255),
+		TitleGradient = {
+			Color3.fromRGB(255, 0, 200),
+			Color3.fromRGB(0, 240, 255),
+			Color3.fromRGB(6, 6, 14),
+			Color3.fromRGB(255, 0, 200),
+		},
+	},
 }
 local themeName = DEFAULT_THEME
 local themeAppliers = {}
+local STYLE_ORDER = { "Default", "Halloween", "Liquid Glass", "Neon", "Minimal", "Aurora", "Retro", "Sakura" }
+local STYLES = {
+	Default = {},
+	Halloween = {
+		Accent = Color3.fromRGB(255, 140, 0),
+		PillOn = Color3.fromRGB(255, 140, 0),
+		KnobOn = Color3.fromRGB(20, 12, 4),
+		SliderFill = Color3.fromRGB(255, 160, 40),
+		TitleGradient = {
+			Color3.fromRGB(255, 140, 0),
+			Color3.fromRGB(180, 90, 220),
+			Color3.fromRGB(12, 6, 16),
+			Color3.fromRGB(255, 140, 0),
+		},
+	},
+	["Liquid Glass"] = {
+		CardTransparency = 0.25,
+		NotifyTransparency = 0.2,
+		GroupStroke = Color3.fromRGB(150, 180, 210),
+	},
+	Neon = {
+		Accent = Color3.fromRGB(0, 255, 200),
+		PillOn = Color3.fromRGB(0, 255, 200),
+		SliderFill = Color3.fromRGB(255, 0, 220),
+		GroupStroke = Color3.fromRGB(0, 220, 200),
+		CardTransparency = 0.3,
+		TitleGradient = {
+			Color3.fromRGB(0, 255, 200),
+			Color3.fromRGB(255, 0, 220),
+			Color3.fromRGB(4, 8, 12),
+			Color3.fromRGB(0, 255, 200),
+		},
+	},
+	Minimal = {
+		CardTransparency = 0,
+		NotifyTransparency = 0,
+	},
+	Aurora = {
+		Accent = Color3.fromRGB(120, 220, 180),
+		PillOn = Color3.fromRGB(120, 220, 180),
+		SliderFill = Color3.fromRGB(150, 180, 255),
+		Background = Color3.fromRGB(14, 22, 30),
+		Group = Color3.fromRGB(20, 32, 42),
+		TitleGradient = {
+			Color3.fromRGB(120, 220, 180),
+			Color3.fromRGB(150, 180, 255),
+			Color3.fromRGB(8, 12, 18),
+			Color3.fromRGB(120, 220, 180),
+		},
+	},
+	Retro = {
+		Accent = Color3.fromRGB(230, 180, 90),
+		PillOn = Color3.fromRGB(230, 180, 90),
+		SliderFill = Color3.fromRGB(240, 200, 120),
+		GroupStroke = Color3.fromRGB(120, 96, 60),
+	},
+	Sakura = {
+		Accent = Color3.fromRGB(245, 170, 200),
+		PillOn = Color3.fromRGB(245, 170, 200),
+		SliderFill = Color3.fromRGB(250, 190, 215),
+		Background = Color3.fromRGB(28, 22, 28),
+		Group = Color3.fromRGB(38, 30, 38),
+	},
+}
+local activeStyle = "Default"
 local function applyThemeTokens(name)
 	local t = THEMES[name]
 	if not t then
@@ -361,7 +572,11 @@ local function applyThemeTokens(name)
 	for k, v in pairs(t) do
 		Theme[k] = v
 	end
-	Theme.Accent = t.Accent or t.TitleGradient[1]
+	local st = STYLES[activeStyle] or {}
+	for k, v in pairs(st) do
+		Theme[k] = v
+	end
+	Theme.Accent = st.Accent or t.Accent or t.TitleGradient[1]
 	for _, fn in ipairs(themeAppliers) do
 		pcall(fn)
 	end
@@ -372,6 +587,14 @@ local function SetThemeLocal(name)
 		name = DEFAULT_THEME
 	end
 	return applyThemeTokens(name)
+end
+local function SetStyleLocal(name)
+	if type(name) ~= "string" or not STYLES[name] then
+		name = "Default"
+	end
+	activeStyle = name
+	applyThemeTokens(themeName)
+	return activeStyle
 end
 applyThemeTokens(DEFAULT_THEME)
 local LucideIcons = {
@@ -723,6 +946,8 @@ local function defaultGlobals()
 		GUIKeybind = nil,
 		NotificationLocation = nil,
 		Theme = nil,
+		Style = nil,
+		UIMode = nil,
 		UIReopenMode = "Floating",
 		FloatingButton = { Position = nil },
 	}
@@ -762,6 +987,12 @@ local function readGlobals()
 	end
 	if type(decoded.Theme) == "string" and THEMES[decoded.Theme] then
 		base.Theme = decoded.Theme
+	end
+	if type(decoded.Style) == "string" and STYLES[decoded.Style] then
+		base.Style = decoded.Style
+	end
+	if decoded.UIMode == "Legacy" or decoded.UIMode == "Modern" then
+		base.UIMode = decoded.UIMode
 	end
 	do
 		local fbPos = nil
@@ -907,6 +1138,15 @@ end
 function Library:GetThemeNames()
 	local out = {}
 	for _, n in ipairs(THEME_ORDER) do out[#out + 1] = n end
+	return out
+end
+function Library:GetStyle() return activeStyle end
+function Library:SetStyle(name)
+	return SetStyleLocal(name)
+end
+function Library:GetStyleNames()
+	local out = {}
+	for _, n in ipairs(STYLE_ORDER) do out[#out + 1] = n end
 	return out
 end
 
@@ -1762,6 +2002,7 @@ end
 	local uiVisible = false
 	local destroyed = false
 	local mobileScale = 1
+	local uiMode = "Modern"
 	local lastViewportCam = nil
 	local viewportConn = nil
 	local updateMobileScale = nil
@@ -1878,7 +2119,7 @@ end
 			Main.Position = uiHomePos
 			if Dock and Dock.Parent then
 				syncDockPosition()
-				Dock.Visible = visible
+				Dock.Visible = visible and (uiMode == "Modern")
 				Dock.GroupTransparency = visible and 0 or 1
 				dockScale.Scale = (visible and 1 or 0.96) * mobileScale
 			end
@@ -1902,7 +2143,7 @@ end
 				uiHomePos.Y.Offset + 10)
 			if Dock and Dock.Parent then
 				syncDockPosition()
-				Dock.Visible = true
+				Dock.Visible = visible and (uiMode == "Modern")
 				Dock.GroupTransparency = 1
 				Tween(Dock, TWEEN_OPEN, { GroupTransparency = 0 })
 				Tween(dockScale, TWEEN_OPEN, { Scale = mobileScale })
@@ -1944,6 +2185,13 @@ end
 			end)
 			if updateFloatingVisibility then updateFloatingVisibility() end
 		end
+	end
+	local function applyUIMode(mode)
+		uiMode = (mode == "Legacy") and "Legacy" or "Modern"
+		if Dock and Dock.Parent then
+			Dock.Visible = (uiMode == "Modern") and uiVisible
+		end
+		if saveGlobalsSoon then saveGlobalsSoon() end
 	end
 	do
 		local FB_SIZE = 48
@@ -6061,6 +6309,26 @@ local gearBtn = IconButton(Header, 28, 7)
 			if saveGlobalsSoon then saveGlobalsSoon() end
 		end,
 	})
+	panelLabel("Appearance", 13)
+	Window._uiModeDd = BuildDropdown(panelScroll, 14, {
+		Name = "UI Mode",
+		NoKeybinds = true,
+		Options = { "Legacy", "Modern" },
+		Default = uiMode,
+		Callback = function(v)
+			applyUIMode(v)
+		end,
+	})
+	Window._styleDd = BuildDropdown(panelScroll, 15, {
+		Name = "Visual Style",
+		NoKeybinds = true,
+		Options = STYLE_ORDER,
+		Default = activeStyle,
+		Callback = function(v)
+			SetStyleLocal(v)
+			if saveGlobalsSoon then saveGlobalsSoon() end
+		end,
+	})
 	panelLabel("Config Manager", 7)
 	configDd = BuildDropdown(panelScroll, 8, {
 		Name = "Config",
@@ -6574,6 +6842,8 @@ local gearBtn = IconButton(Header, 28, 7)
 			NotificationLocation = notifyLocation,
 			UIReopenMode = uiReopenMode,
 			Theme = themeName,
+			Style = activeStyle,
+			UIMode = uiMode,
 			FloatingButton = { Position = packUDim2((floatingBtn and floatingBtn.Parent and floatingBtn.Position or nil) or savedFloatingPos) },
 		}
 		local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
@@ -6606,6 +6876,14 @@ local gearBtn = IconButton(Header, 28, 7)
 		if G.Theme and THEMES[G.Theme] then
 			applyThemeTokens(G.Theme)
 			if themeDdObj then themeDdObj:SetSilent(G.Theme) end
+		end
+		if G.Style and STYLES[G.Style] then
+			SetStyleLocal(G.Style)
+			if Window._styleDd then Window._styleDd:SetSilent(G.Style) end
+		end
+		if G.UIMode == "Legacy" or G.UIMode == "Modern" then
+			applyUIMode(G.UIMode)
+			if Window._uiModeDd then Window._uiModeDd:SetSilent(G.UIMode) end
 		end
 		if G.NotificationLocation then
 			SetNotifyLocation(G.NotificationLocation)

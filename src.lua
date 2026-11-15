@@ -5941,6 +5941,7 @@ function Window:AddTab(tabOpts)
 		Corner(indicator, 2)
 		local tabLabel = New("TextLabel", {
 			Name = "Label",
+			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.new(0, 36, 0.5, 0),
 			Size = UDim2.new(1, -44, 1, 0),
 			BackgroundTransparency = 1,

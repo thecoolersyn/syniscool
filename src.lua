@@ -1881,11 +1881,7 @@ function Library:CreateWindow(opts)
 			if sf then tl = sf:FindFirstChildOfClass("UIListLayout") end
 		end)
 		if tl then
-			if #tabs <= MAX_VISIBLE_TABS then
-				tl.VerticalAlignment = Enum.VerticalAlignment.Center
-			else
-				tl.VerticalAlignment = Enum.VerticalAlignment.Top
-			end
+			tl.VerticalAlignment = Enum.VerticalAlignment.Top
 		end
 		local desiredH = DOCK.LOGO_H + navH + DOCK.PROFILE_H
 		local maxH = mh
@@ -1973,7 +1969,7 @@ function Library:CreateWindow(opts)
 		Padding = UDim.new(0, 4),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Top,
 		Parent = tabScroller,
 	})
 	local Content = New("Frame", {
@@ -2816,8 +2812,7 @@ end
 				Header.Position = UDim2.new(0, DOCK.LEGACY_W, 0, 0)
 				Header.Size = UDim2.new(1, -DOCK.LEGACY_W, 0, HEADER_H)
 				if headerDivider then
-					headerDivider.Position = UDim2.new(0, DOCK.LEGACY_W + 18, 0, HEADER_H - 6)
-					headerDivider.Size = UDim2.new(1, -(DOCK.LEGACY_W + 36), 0, 12)
+					headerDivider.Visible = false
 				end
 			end
 		end
@@ -6036,7 +6031,7 @@ function Window:AddTab(tabOpts)
 		Connect(button:GetPropertyChangedSignal("AbsolutePosition"), placeTip)
 		bindTheme(function()
 			local sel = (currentTab == Tab)
-			button.BackgroundColor3 = Theme.TabSelected
+			button.BackgroundColor3 = Theme.Accent:Lerp(Theme.Background, 0.86)
 			button.BackgroundTransparency = sel and 0 or 1
 			nameLabel.TextColor3 = Theme.TextSoft
 			nameLabel.BackgroundColor3 = Theme.Group

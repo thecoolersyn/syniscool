@@ -14,7 +14,7 @@ pcall(function()
 	end
 end)
 local Window = Library:CreateWindow({
-	Title = "Zenthra",
+	Title = "Norepine",
 	Subtitle = "Blade Ball",
 	Size = UDim2.fromOffset(700, 460),
 })

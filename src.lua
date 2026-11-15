@@ -1859,6 +1859,11 @@ function Library:CreateWindow(opts)
 			end
 		end
 		local desiredH = DOCK.LOGO_H + navH + DOCK.PROFILE_H
+		local asize = Main.AbsoluteSize
+		local apos = Main.AbsolutePosition
+		if asize.X > 0 and asize.Y > 0 then
+			mw, mh = asize.X, asize.Y
+		end
 		local maxH = mh
 		pcall(function()
 			local cam = workspace.CurrentCamera
@@ -1867,12 +1872,8 @@ function Library:CreateWindow(opts)
 			end
 		end)
 		local dockH = math.clamp(desiredH, math.min(DOCK_MIN_H, maxH), maxH)
-		Dock.Position = UDim2.new(
-			Main.Position.X.Scale,
-			Main.Position.X.Offset - mw / 2 - DOCK.GAP - DOCK.W,
-			Main.Position.Y.Scale,
-			Main.Position.Y.Offset - dockH / 2
-		)
+		local dScale = (dockScale and dockScale.Scale or 1)
+		Dock.Position = UDim2.fromOffset(apos.X - DOCK.W * dScale - DOCK.GAP, apos.Y + (mh - dockH * dScale) / 2)
 		Dock.Size = UDim2.fromOffset(DOCK.W, dockH)
 	end
 	syncDockPosition()
@@ -2439,6 +2440,7 @@ end
 	local panelScale = nil
 	local panelOpen = false
 	local syncPanelPosition = nil
+	local guiTabRef = nil
 	local setPanel = nil
 	local modal = nil
 	local closeModal = nil
@@ -2737,7 +2739,7 @@ end
 				dockScale.Scale = (visible and 1 or 0.96) * mobileScale
 			end
 			if panel then
-				panel.Visible = visible and panelOpen
+				panel.Visible = true
 				panel.GroupTransparency = visible and 0 or 1
 				panelScale.Scale = (visible and 1 or 0.96) * mobileScale
 				if visible and panelOpen and syncPanelPosition then syncPanelPosition() end
@@ -2786,12 +2788,9 @@ end
 					if not uiVisible and Dock and Dock.Parent then Dock.Visible = false end
 				end)
 			end
-			if panel and panel.Visible then
+			if panel then
+				panel.Visible = true
 				Tween(panel, TWEEN_MED, { GroupTransparency = 1 })
-				Tween(panelScale, TWEEN_MED, { Scale = 0.96 * mobileScale })
-				task.delay(0.24, function()
-					if not uiVisible and panel then panel.Visible = false end
-				end)
 			end
 			task.delay(0.24, function()
 				if not uiVisible then Main.Visible = false end
@@ -5930,6 +5929,13 @@ local bellBtn = IconButton(head, 26)
 		end
 		local previous = currentTab
 		currentTab = tab
+		if guiTabRef then
+			local isGui = (tab == guiTabRef)
+			if panelOpen ~= isGui then
+				panelOpen = isGui
+				if hookPanelOpen then hookPanelOpen() end
+			end
+		end
 		dividerLabel.Text = tab and ("[ " .. tab.Name .. " ]") or ""
 		for _, t in ipairs(tabs) do
 			local selected = (t == tab)
@@ -6237,7 +6243,7 @@ function Window:AddTab(tabOpts)
 				selectTab(Tab)
 			end
 		end)
-		if #tabs == 1 then
+		if not tabOpts.SuppressAutoSelect and currentTab == nil then
 			selectTab(Tab, true)
 		end
 		return Tab
@@ -6764,6 +6770,38 @@ local gearBtn = IconButton(Header, 28, 7)
 			end
 		end
 		hookPanelOpen = setGearSpin
+	end
+	do
+		local guiTab = Window:AddTab({ Name = "Gui", Icon = "cog", SuppressAutoSelect = true })
+		guiTab.Button.LayoutOrder = 9998
+		guiTabRef = guiTab
+		if guiTab.Page then
+			panel.Parent = guiTab.Page
+			panel.AnchorPoint = Vector2.new(0, 0)
+			panel.Position = UDim2.new(0, 0, 0, 0)
+			panel.Size = UDim2.new(1, 0, 1, 0)
+			panel.ZIndex = 2
+			panel.Active = false
+			panel.BackgroundTransparency = 1
+			panel.GroupTransparency = 0
+			panel.Visible = true
+		end
+		if panelEdgeDivider then panelEdgeDivider.Visible = false end
+		local panelStroke = panel:FindFirstChildOfClass("UIStroke")
+		if panelStroke then panelStroke.Transparency = 1 end
+		syncPanelPosition = function() end
+		if panelScale then panelScale.Scale = 1 end
+		setPanel = function(v)
+			v = v == true
+			if v == panelOpen then return end
+			if v then
+				selectTab(guiTab)
+			else
+				local target = tabs[1]
+				if target then selectTab(target) end
+			end
+			if hookPanelOpen then hookPanelOpen() end
+		end
 	end
 	local CONFIG_DIR = ConfigDir
 	local CONFIG_DEFAULT = "Default"

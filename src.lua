@@ -10,6 +10,7 @@ local THEME_ORDER = {
 	"Default", "Cobalt", "Night", "Wave", "Vapor", "Frost",
 	"Midnight", "Obsidian", "Crimson", "Emerald", "Rose", "Slate",
 	"Dracula", "Nord", "Catppuccin", "AMOLED", "Cyberpunk",
+	"Pure Black", "Halloween", "Deep Ocean", "Crimson Eclipse", "Sakura Midnight",
 }
 local THEMES = {
 	Default = {
@@ -494,6 +495,151 @@ local THEMES = {
 			Color3.fromRGB(255, 0, 200),
 		},
 	},
+	["Pure Black"] = {
+		Background   = Color3.fromRGB(0, 0, 0),
+		Group        = Color3.fromRGB(8, 8, 9),
+		GroupStroke  = Color3.fromRGB(30, 30, 32),
+		Control      = Color3.fromRGB(16, 16, 18),
+		ControlHover = Color3.fromRGB(26, 26, 28),
+		Divider      = Color3.fromRGB(18, 18, 20),
+		Text         = Color3.fromRGB(245, 245, 247),
+		TextDim      = Color3.fromRGB(140, 140, 145),
+		TextSoft     = Color3.fromRGB(205, 205, 210),
+		HeaderText   = Color3.fromRGB(120, 120, 125),
+		TabSelected  = Color3.fromRGB(14, 14, 16),
+		PillOff      = Color3.fromRGB(24, 24, 26),
+		KnobOff      = Color3.fromRGB(190, 190, 195),
+		PillOn       = Color3.fromRGB(240, 240, 242),
+		KnobOn       = Color3.fromRGB(0, 0, 0),
+		SliderTrack  = Color3.fromRGB(22, 22, 24),
+		SliderFill   = Color3.fromRGB(240, 240, 242),
+		Scrollbar    = Color3.fromRGB(46, 46, 50),
+		CardTransparency   = 0.3,
+		NotifyTransparency = 0.3,
+		Accent       = Color3.fromRGB(240, 240, 242),
+		TitleGradient = {
+			Color3.fromRGB(245, 245, 247),
+			Color3.fromRGB(160, 160, 165),
+			Color3.fromRGB(0, 0, 0),
+			Color3.fromRGB(245, 245, 247),
+		},
+	},
+	Halloween = {
+		Background   = Color3.fromRGB(13, 8, 18),
+		Group        = Color3.fromRGB(26, 15, 34),
+		GroupStroke  = Color3.fromRGB(120, 60, 30),
+		Control      = Color3.fromRGB(38, 22, 48),
+		ControlHover = Color3.fromRGB(52, 30, 64),
+		Divider      = Color3.fromRGB(40, 22, 50),
+		Text         = Color3.fromRGB(250, 238, 225),
+		TextDim      = Color3.fromRGB(190, 160, 150),
+		TextSoft     = Color3.fromRGB(225, 205, 190),
+		HeaderText   = Color3.fromRGB(180, 120, 80),
+		TabSelected  = Color3.fromRGB(44, 24, 56),
+		PillOff      = Color3.fromRGB(54, 34, 64),
+		KnobOff      = Color3.fromRGB(230, 210, 195),
+		PillOn       = Color3.fromRGB(255, 122, 24),
+		KnobOn       = Color3.fromRGB(18, 10, 6),
+		SliderTrack  = Color3.fromRGB(52, 32, 62),
+		SliderFill   = Color3.fromRGB(255, 140, 40),
+		Scrollbar    = Color3.fromRGB(92, 52, 104),
+		CardTransparency   = 0.35,
+		NotifyTransparency = 0.35,
+		Accent       = Color3.fromRGB(255, 122, 24),
+		TitleGradient = {
+			Color3.fromRGB(255, 122, 24),
+			Color3.fromRGB(168, 85, 247),
+			Color3.fromRGB(12, 6, 18),
+			Color3.fromRGB(255, 122, 24),
+		},
+	},
+	["Deep Ocean"] = {
+		Background   = Color3.fromRGB(6, 18, 32),
+		Group        = Color3.fromRGB(11, 28, 48),
+		GroupStroke  = Color3.fromRGB(30, 70, 110),
+		Control      = Color3.fromRGB(16, 38, 62),
+		ControlHover = Color3.fromRGB(22, 50, 78),
+		Divider      = Color3.fromRGB(18, 42, 66),
+		Text         = Color3.fromRGB(226, 240, 250),
+		TextDim      = Color3.fromRGB(140, 168, 190),
+		TextSoft     = Color3.fromRGB(195, 218, 235),
+		HeaderText   = Color3.fromRGB(110, 150, 180),
+		TabSelected  = Color3.fromRGB(16, 40, 62),
+		PillOff      = Color3.fromRGB(28, 54, 80),
+		KnobOff      = Color3.fromRGB(190, 210, 225),
+		PillOn       = Color3.fromRGB(42, 169, 255),
+		KnobOn       = Color3.fromRGB(6, 18, 32),
+		SliderTrack  = Color3.fromRGB(24, 50, 76),
+		SliderFill   = Color3.fromRGB(42, 169, 255),
+		Scrollbar    = Color3.fromRGB(40, 80, 120),
+		CardTransparency   = 0.35,
+		NotifyTransparency = 0.35,
+		Accent       = Color3.fromRGB(42, 169, 255),
+		TitleGradient = {
+			Color3.fromRGB(42, 169, 255),
+			Color3.fromRGB(80, 200, 220),
+			Color3.fromRGB(2, 8, 16),
+			Color3.fromRGB(42, 169, 255),
+		},
+	},
+	["Crimson Eclipse"] = {
+		Background   = Color3.fromRGB(18, 6, 8),
+		Group        = Color3.fromRGB(30, 10, 14),
+		GroupStroke  = Color3.fromRGB(90, 24, 34),
+		Control      = Color3.fromRGB(42, 16, 22),
+		ControlHover = Color3.fromRGB(56, 22, 30),
+		Divider      = Color3.fromRGB(44, 18, 24),
+		Text         = Color3.fromRGB(250, 232, 234),
+		TextDim      = Color3.fromRGB(190, 150, 156),
+		TextSoft     = Color3.fromRGB(224, 198, 202),
+		HeaderText   = Color3.fromRGB(160, 100, 110),
+		TabSelected  = Color3.fromRGB(40, 14, 20),
+		PillOff      = Color3.fromRGB(58, 26, 34),
+		KnobOff      = Color3.fromRGB(210, 185, 190),
+		PillOn       = Color3.fromRGB(255, 45, 85),
+		KnobOn       = Color3.fromRGB(18, 6, 8),
+		SliderTrack  = Color3.fromRGB(50, 22, 28),
+		SliderFill   = Color3.fromRGB(255, 45, 85),
+		Scrollbar    = Color3.fromRGB(96, 40, 52),
+		CardTransparency   = 0.35,
+		NotifyTransparency = 0.35,
+		Accent       = Color3.fromRGB(255, 45, 85),
+		TitleGradient = {
+			Color3.fromRGB(255, 45, 85),
+			Color3.fromRGB(255, 120, 140),
+			Color3.fromRGB(10, 4, 6),
+			Color3.fromRGB(255, 45, 85),
+		},
+	},
+	["Sakura Midnight"] = {
+		Background   = Color3.fromRGB(20, 10, 18),
+		Group        = Color3.fromRGB(34, 16, 30),
+		GroupStroke  = Color3.fromRGB(90, 50, 80),
+		Control      = Color3.fromRGB(48, 24, 42),
+		ControlHover = Color3.fromRGB(62, 32, 54),
+		Divider      = Color3.fromRGB(48, 24, 42),
+		Text         = Color3.fromRGB(250, 234, 242),
+		TextDim      = Color3.fromRGB(196, 160, 180),
+		TextSoft     = Color3.fromRGB(226, 200, 214),
+		HeaderText   = Color3.fromRGB(170, 120, 145),
+		TabSelected  = Color3.fromRGB(46, 22, 40),
+		PillOff      = Color3.fromRGB(64, 34, 56),
+		KnobOff      = Color3.fromRGB(220, 195, 210),
+		PillOn       = Color3.fromRGB(255, 143, 199),
+		KnobOn       = Color3.fromRGB(20, 10, 18),
+		SliderTrack  = Color3.fromRGB(54, 28, 46),
+		SliderFill   = Color3.fromRGB(255, 143, 199),
+		Scrollbar    = Color3.fromRGB(100, 60, 88),
+		CardTransparency   = 0.35,
+		NotifyTransparency = 0.35,
+		Accent       = Color3.fromRGB(255, 143, 199),
+		TitleGradient = {
+			Color3.fromRGB(255, 143, 199),
+			Color3.fromRGB(200, 140, 220),
+			Color3.fromRGB(12, 6, 12),
+			Color3.fromRGB(255, 143, 199),
+		},
+	},
 }
 local themeName = DEFAULT_THEME
 local themeAppliers = {}
@@ -562,6 +708,25 @@ local STYLES = {
 	},
 }
 local activeStyle = "Default"
+local ThemeColors = {}
+local borderFX = "Default"
+local BORDER_FX_ORDER = { "Default", "Glow", "Thin", "Thick", "None" }
+local function applyColorOverrides()
+	local c = ThemeColors
+	if c.Main then Theme.Background = c.Main end
+	if c.Secondary then Theme.Group = c.Secondary end
+	if c.Accent then
+		Theme.Accent = c.Accent
+		Theme.PillOn = c.Accent
+		Theme.SliderFill = c.Accent
+	end
+	if c.Stroke then Theme.GroupStroke = c.Stroke end
+	if c.Text then Theme.Text = c.Text end
+	if c.Subtext then
+		Theme.TextDim = c.Subtext
+		Theme.TextSoft = c.Subtext
+	end
+end
 local function applyThemeTokens(name)
 	local t = THEMES[name]
 	if not t then
@@ -577,6 +742,7 @@ local function applyThemeTokens(name)
 		Theme[k] = v
 	end
 	Theme.Accent = st.Accent or t.Accent or t.TitleGradient[1]
+	applyColorOverrides()
 	for _, fn in ipairs(themeAppliers) do
 		pcall(fn)
 	end
@@ -729,6 +895,135 @@ end
 local function round(num, decimals)
 	local mult = 10 ^ (decimals or 0)
 	return math.floor(num * mult + 0.5) / mult
+end
+local ThemeAssets = {}
+local function loadThemeAsset(file)
+	if ThemeAssets[file] ~= nil then
+		return ThemeAssets[file] or nil
+	end
+	local url = nil
+	pcall(function()
+		if type(getcustomasset) == "function" then
+			url = getcustomasset("Norepine/Assets/" .. file)
+		end
+	end)
+	ThemeAssets[file] = url or false
+	return url
+end
+local function BuildThemeDecorations(parent, bindTheme)
+	local refs = { bubbles = {}, particles = {} }
+	local hatUrl = loadThemeAsset("halloween_hat.png")
+	local webUrl = loadThemeAsset("cobweb.png")
+	local bubbleUrl = loadThemeAsset("bubble.png")
+	local particleUrl = loadThemeAsset("particle.png")
+	local decor = New("Frame", {
+		Name = "Decorations",
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		ZIndex = 0,
+		Parent = parent,
+	})
+	refs.layer = decor
+	if hatUrl then
+		refs.hat = New("ImageLabel", {
+			Name = "HalloweenHat",
+			Size = UDim2.fromOffset(58, 58),
+			Position = UDim2.new(0, 10, 0, -8),
+			Rotation = -18,
+			BackgroundTransparency = 1,
+			Image = hatUrl,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 0,
+			Parent = decor,
+		})
+	end
+	if webUrl then
+		refs.web = New("ImageLabel", {
+			Name = "Cobweb",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, 6, 0, -10),
+			Size = UDim2.fromOffset(82, 82),
+			BackgroundTransparency = 1,
+			Image = webUrl,
+			ImageColor3 = Color3.fromRGB(235, 235, 245),
+			ImageTransparency = 0.3,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 0,
+			Parent = decor,
+		})
+	end
+	if bubbleUrl then
+		for i = 1, 8 do
+			local b = New("ImageLabel", {
+				Name = "Bubble",
+				Size = UDim2.fromOffset(12 + i * 3, 12 + i * 3),
+				BackgroundTransparency = 1,
+				Image = bubbleUrl,
+				ImageColor3 = Color3.fromRGB(220, 170, 255),
+				ImageTransparency = 0.4,
+				ZIndex = 0,
+				Parent = decor,
+			})
+			b.Position = UDim2.new(math.random(), 0, math.random(), 0)
+			refs.bubbles[i] = b
+		end
+	end
+	if particleUrl then
+		for i = 1, 12 do
+			local p = New("ImageLabel", {
+				Name = "Particle",
+				Size = UDim2.fromOffset(8, 8),
+				BackgroundTransparency = 1,
+				Image = particleUrl,
+				ImageTransparency = 0.15,
+				ZIndex = 0,
+				Parent = decor,
+			})
+			p.Position = UDim2.new(math.random(), 0, math.random(), 0)
+			refs.particles[i] = p
+		end
+	end
+	refs.active = false
+	refs.apply = function()
+		local halloween = (themeName == "Halloween") or (activeStyle == "Halloween")
+		local glass = (activeStyle == "Liquid Glass") or (activeStyle == "Aurora")
+		local on = halloween or glass
+		refs.active = on
+		decor.Visible = on
+		if refs.hat then refs.hat.Visible = halloween end
+		if refs.web then refs.web.Visible = halloween end
+		for _, b in ipairs(refs.bubbles) do b.Visible = on end
+		for _, p in ipairs(refs.particles) do p.Visible = halloween end
+	end
+	if bindTheme then bindTheme(refs.apply) end
+	refs.apply()
+	task.spawn(function()
+		local t = 0
+		while decor.Parent do
+			task.wait(0.05)
+			if refs.active then
+				t = t + 0.05
+				for _, b in ipairs(refs.bubbles) do
+					local y = b.Position.Y.Scale - 0.005
+					if y < -0.1 then
+						y = 1.05
+						b.Position = UDim2.new(math.random(), 0, y, 0)
+					end
+					b.Position = UDim2.new(b.Position.X.Scale, 0, y, 0)
+				end
+				for _, p in ipairs(refs.particles) do
+					local y = p.Position.Y.Scale - 0.003
+					if y < -0.05 then
+						y = 1.02
+						p.Position = UDim2.new(math.random(), 0, y, 0)
+					end
+					p.Position = UDim2.new(p.Position.X.Scale, 0, y, 0)
+				end
+			end
+		end
+	end)
+	return refs
 end
 local function MakeIcon(parent, icon, size, color)
 	local asset = icon and LucideIcons[icon]
@@ -948,6 +1243,7 @@ local function defaultGlobals()
 		Theme = nil,
 		Style = nil,
 		UIMode = nil,
+		ThemeColors = nil,
 		UIReopenMode = "Floating",
 		FloatingButton = { Position = nil },
 	}
@@ -993,6 +1289,19 @@ local function readGlobals()
 	end
 	if decoded.UIMode == "Legacy" or decoded.UIMode == "Modern" then
 		base.UIMode = decoded.UIMode
+	end
+	if type(decoded.ThemeColors) == "table" then
+		base.ThemeColors = {}
+		for _, k in ipairs({ "Main", "Secondary", "Accent", "Stroke", "Text", "Subtext" }) do
+			local src = decoded.ThemeColors[k]
+			if type(src) == "table" then
+				local r, g, b = tonumber(src.R), tonumber(src.G), tonumber(src.B)
+				if r and g and b then
+					base.ThemeColors[k] = Color3.new(
+						math.clamp(r, 0, 1), math.clamp(g, 0, 1), math.clamp(b, 0, 1))
+				end
+			end
+		end
 	end
 	do
 		local fbPos = nil
@@ -1240,6 +1549,7 @@ function Library:CreateWindow(opts)
 		Main.BackgroundColor3 = Theme.Background
 		mainStroke.Color = Theme.GroupStroke
 	end)
+	local decorRefs = BuildThemeDecorations(Main, bindTheme)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
@@ -4071,6 +4381,7 @@ TextColor3 = Color3.fromRGB(255, 255, 255),
 			return out
 		end
 
+		local setOpen
 		local function rebuildRows()
 			for _, ch in ipairs(listScroller:GetChildren()) do
 				if ch:IsA("TextButton") or ch:IsA("Frame") then
@@ -4295,7 +4606,6 @@ TextColor3 = Color3.fromRGB(255, 255, 255),
 			popup.Position = UDim2.new(0, sx, 0, sy)
 		end
 
-		local setOpen
 		setOpen = function(state)
 			state = state == true
 			if state == open then return end
@@ -6372,6 +6682,29 @@ local gearBtn = IconButton(Header, 28, 7)
 			if saveGlobalsSoon then saveGlobalsSoon() end
 		end,
 	})
+	do
+		local colorDefs = {
+			{ key = "Main", label = "Main color", token = "Background" },
+			{ key = "Secondary", label = "Secondary", token = "Group" },
+			{ key = "Accent", label = "Accent", token = "Accent" },
+			{ key = "Stroke", label = "Stroke", token = "GroupStroke" },
+			{ key = "Text", label = "Text", token = "Text" },
+			{ key = "Subtext", label = "Subtext", token = "TextDim" },
+		}
+		local order = 16
+		for _, def in ipairs(colorDefs) do
+			ColorPreview(panelScroll, order, {
+				Name = def.label,
+				Default = ThemeColors[def.key] or Theme[def.token],
+				Callback = function(c)
+					ThemeColors[def.key] = c
+					applyThemeTokens(themeName)
+					if saveGlobalsSoon then saveGlobalsSoon() end
+				end,
+			})
+			order = order + 1
+		end
+	end
 	panelLabel("Config Manager", 7)
 	configDd = BuildDropdown(panelScroll, 8, {
 		Name = "Config",
@@ -6877,6 +7210,13 @@ local gearBtn = IconButton(Header, 28, 7)
 	local lastGlobalsJson = nil
 	local function saveGlobalsNow()
 		if not CanWriteFiles() then return false end
+		local tc = nil
+		if next(ThemeColors) then
+			tc = {}
+			for k, c in pairs(ThemeColors) do
+				tc[k] = { R = round(c.R, 4), G = round(c.G, 4), B = round(c.B, 4) }
+			end
+		end
 		local data = {
 			Watermark = { Enabled = wmEnabled, Position = packUDim2(wmFrame and wmFrame.Position or nil) },
 			KeybindList = { Enabled = kbEnabled, Position = packUDim2(kbFrame and kbFrame.Position or nil) },
@@ -6887,6 +7227,7 @@ local gearBtn = IconButton(Header, 28, 7)
 			Theme = themeName,
 			Style = activeStyle,
 			UIMode = uiMode,
+			ThemeColors = tc,
 			FloatingButton = { Position = packUDim2((floatingBtn and floatingBtn.Parent and floatingBtn.Position or nil) or savedFloatingPos) },
 		}
 		local ok, json = pcall(function() return HttpService:JSONEncode(data) end)
@@ -6915,6 +7256,9 @@ local gearBtn = IconButton(Header, 28, 7)
 		end
 		if G.UIReopenMode == "Floating" or G.UIReopenMode == "Keybind" then
 			uiReopenMode = G.UIReopenMode
+		end
+		if type(G.ThemeColors) == "table" then
+			for k, v in pairs(G.ThemeColors) do ThemeColors[k] = v end
 		end
 		if G.Theme and THEMES[G.Theme] then
 			applyThemeTokens(G.Theme)

@@ -11,6 +11,7 @@ local THEME_ORDER = {
 	"Midnight", "Obsidian", "Crimson", "Emerald", "Rose", "Slate",
 	"Dracula", "Nord", "Catppuccin", "AMOLED", "Cyberpunk",
 	"Pure Black", "Halloween", "Deep Ocean", "Crimson Eclipse", "Sakura Midnight",
+	"Liquid Glass",
 }
 local THEMES = {
 	Default = {
@@ -496,8 +497,7 @@ local THEMES = {
 		},
 	},
 	["Pure Black"] = {
-		Background   = Color3.fromRGB(0, 0, 0),
-		Group        = Color3.fromRGB(8, 8, 9),
+		Background   = Color3.fromRGB(0, 0, 0),		Group        = Color3.fromRGB(8, 8, 9),
 		GroupStroke  = Color3.fromRGB(30, 30, 32),
 		Control      = Color3.fromRGB(16, 16, 18),
 		ControlHover = Color3.fromRGB(26, 26, 28),
@@ -638,6 +638,35 @@ local THEMES = {
 			Color3.fromRGB(200, 140, 220),
 			Color3.fromRGB(12, 6, 12),
 			Color3.fromRGB(255, 143, 199),
+		},
+	},
+	["Liquid Glass"] = {
+		Background   = Color3.fromRGB(214, 228, 240),
+		Group        = Color3.fromRGB(236, 244, 250),
+		GroupStroke  = Color3.fromRGB(168, 198, 220),
+		Control      = Color3.fromRGB(206, 224, 238),
+		ControlHover = Color3.fromRGB(218, 234, 245),
+		Divider      = Color3.fromRGB(188, 212, 230),
+		Text         = Color3.fromRGB(26, 44, 62),
+		TextDim      = Color3.fromRGB(74, 104, 130),
+		TextSoft     = Color3.fromRGB(44, 70, 94),
+		HeaderText   = Color3.fromRGB(96, 128, 154),
+		TabSelected  = Color3.fromRGB(222, 236, 246),
+		PillOff      = Color3.fromRGB(198, 218, 234),
+		KnobOff      = Color3.fromRGB(255, 255, 255),
+		PillOn       = Color3.fromRGB(90, 174, 224),
+		KnobOn       = Color3.fromRGB(255, 255, 255),
+		SliderTrack  = Color3.fromRGB(198, 218, 234),
+		SliderFill   = Color3.fromRGB(90, 174, 224),
+		Scrollbar    = Color3.fromRGB(150, 180, 202),
+		CardTransparency   = 0.05,
+		NotifyTransparency = 0.1,
+		Accent       = Color3.fromRGB(90, 174, 224),
+		TitleGradient = {
+			Color3.fromRGB(26, 44, 62),
+			Color3.fromRGB(44, 70, 94),
+			Color3.fromRGB(26, 44, 62),
+			Color3.fromRGB(26, 44, 62),
 		},
 	},
 }
@@ -962,6 +991,18 @@ local function BuildThemeDecorations(parent, bindTheme)
 			Parent = fg,
 		})
 	end
+	refs.skull = New("ImageLabel", {
+		Name = "SkullOrnament",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -18, 0, 6),
+		Size = UDim2.fromOffset(16, 16),
+		BackgroundTransparency = 1,
+		Image = LucideIcons["skull"],
+		ImageColor3 = Theme.Accent,
+		ScaleType = Enum.ScaleType.Fit,
+		ZIndex = 50,
+		Parent = fg,
+	})
 	if bubbleUrl then
 		for i = 1, 8 do
 			local b = New("ImageLabel", {
@@ -996,15 +1037,25 @@ local function BuildThemeDecorations(parent, bindTheme)
 	refs.active = false
 	refs.apply = function()
 		local halloween = (themeName == "Halloween") or (activeStyle == "Halloween")
-		local glass = (activeStyle == "Liquid Glass") or (activeStyle == "Aurora")
-		local on = halloween or glass
-		refs.active = on
-		decor.Visible = on
+		local glassy = (themeName == "Liquid Glass") or (activeStyle == "Liquid Glass") or (activeStyle == "Aurora")
+		local sakura = (themeName == "Sakura Midnight")
+		refs.active = true
+		decor.Visible = true
 		if refs.front then refs.front.Visible = halloween end
 		if refs.hat then refs.hat.Visible = halloween end
 		if refs.web then refs.web.Visible = halloween end
-		for _, b in ipairs(refs.bubbles) do b.Visible = on end
-		for _, p in ipairs(refs.particles) do p.Visible = halloween end
+		if refs.skull then
+			refs.skull.Visible = halloween
+			refs.skull.ImageColor3 = Theme.Accent
+		end
+		for _, b in ipairs(refs.bubbles) do
+			b.Visible = halloween or glassy or sakura
+			b.ImageColor3 = Theme.Accent
+		end
+		for _, p in ipairs(refs.particles) do
+			p.Visible = true
+			p.ImageColor3 = Theme.Accent
+		end
 	end
 	if bindTheme then bindTheme(refs.apply) end
 	refs.apply()
@@ -1544,6 +1595,8 @@ function Library:CreateWindow(opts)
 	})
 	Corner(Main, 12)
 	local mainStroke = Stroke(Main, Theme.GroupStroke, 0.4)
+	local accentStroke = Stroke(Main, Theme.Accent, 0.55)
+	accentStroke.Thickness = 2
 	local themeRefs = {}
 	local function bindTheme(fn)
 		themeRefs[#themeRefs + 1] = fn
@@ -1558,6 +1611,7 @@ function Library:CreateWindow(opts)
 	bindTheme(function()
 		Main.BackgroundColor3 = Theme.Background
 		mainStroke.Color = Theme.GroupStroke
+		accentStroke.Color = Theme.Accent
 	end)
 	local decorRefs = BuildThemeDecorations(Main, bindTheme)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })

@@ -778,38 +778,6 @@ end
 local function Tween(obj, info, props)
 	TweenService:Create(obj, info or TWEEN_FAST, props):Play()
 end
-local function ApplyTabLayout(tabsList, modern)
-	for _, t in ipairs(tabsList or {}) do
-		local btn = t.Button
-		if btn then
-			if modern then
-				btn.Size = UDim2.fromOffset(34, 34)
-				if t.IconRef then
-					t.IconRef.AnchorPoint = Vector2.new(0.5, 0.5)
-					t.IconRef.Position = UDim2.new(0.5, 0, 0.5, 0)
-				end
-				if t.Label then t.Label.Visible = false end
-				if t.Indicator then t.Indicator.Visible = false end
-			else
-				btn.Size = UDim2.new(1, -10, 0, 34)
-				if t.IconRef then
-					t.IconRef.AnchorPoint = Vector2.new(0, 0.5)
-					t.IconRef.Position = UDim2.new(0, 10, 0.5, 0)
-				end
-				if t.Label then
-					t.Label.Visible = true
-					t.Label.Position = UDim2.new(0, 36, 0.5, 0)
-					t.Label.Size = UDim2.new(1, -44, 1, 0)
-				end
-				if t.Indicator then
-					t.Indicator.AnchorPoint = Vector2.new(0, 0.5)
-					t.Indicator.Position = UDim2.new(0, 2, 0.5, 0)
-					t.Indicator.Size = UDim2.fromOffset(3, 18)
-				end
-			end
-		end
-	end
-end
 local function Corner(parent, radius)
 	return New("UICorner", { CornerRadius = UDim.new(0, radius), Parent = parent })
 end
@@ -910,9 +878,9 @@ local function BuildThemeDecorations(parent, bindTheme)
 	})
 	backdrop("HalloweenMoon", moonUrl, {
 		AnchorPoint = Vector2.new(0, 0),
-		Position = UDim2.new(0.66, 0, 0.08, 0),
+		Position = UDim2.new(0, 18, 0, 16),
 		Size = UDim2.fromOffset(150, 150),
-		ImageTransparency = 0.15,
+		ImageTransparency = 0.05,
 		ScaleType = Enum.ScaleType.Fit,
 	})
 	backdrop("HalloweenBats", batsUrl, {
@@ -1054,9 +1022,9 @@ local function BuildThemeDecorations(parent, bindTheme)
 	if hatUrl then
 		refs.hat = New("ImageLabel", {
 			Name = "HalloweenHat",
-			Size = UDim2.fromOffset(54, 54),
-			Position = UDim2.new(0, -2, 0, -18),
-			Rotation = -18,
+			Size = UDim2.fromOffset(62, 62),
+			Position = UDim2.new(0, 6, 0, -12),
+			Rotation = -20,
 			BackgroundTransparency = 1,
 			Image = hatUrl,
 			ScaleType = Enum.ScaleType.Fit,
@@ -1802,7 +1770,7 @@ function Library:CreateWindow(opts)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
-	local DOCK = { W = 72, LEGACY_W = 140, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }
+	local DOCK = { W = 72, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }
 	local uiMode = "Legacy"
 	local tabs = {}
 	local tabTooltips = {}
@@ -1859,11 +1827,6 @@ function Library:CreateWindow(opts)
 			end
 		end
 		local desiredH = DOCK.LOGO_H + navH + DOCK.PROFILE_H
-		local asize = Main.AbsoluteSize
-		local apos = Main.AbsolutePosition
-		if asize.X > 0 and asize.Y > 0 then
-			mw, mh = asize.X, asize.Y
-		end
 		local maxH = mh
 		pcall(function()
 			local cam = workspace.CurrentCamera
@@ -1872,8 +1835,12 @@ function Library:CreateWindow(opts)
 			end
 		end)
 		local dockH = math.clamp(desiredH, math.min(DOCK_MIN_H, maxH), maxH)
-		local dScale = (dockScale and dockScale.Scale or 1)
-		Dock.Position = UDim2.fromOffset(apos.X - DOCK.W * dScale - DOCK.GAP, apos.Y + (mh - dockH * dScale) / 2)
+		Dock.Position = UDim2.new(
+			Main.Position.X.Scale,
+			Main.Position.X.Offset - mw / 2 - DOCK.GAP - DOCK.W,
+			Main.Position.Y.Scale,
+			Main.Position.Y.Offset - dockH / 2
+		)
 		Dock.Size = UDim2.fromOffset(DOCK.W, dockH)
 	end
 	syncDockPosition()
@@ -1963,43 +1930,14 @@ function Library:CreateWindow(opts)
 		ZIndex = 6,
 		Parent = Main,
 	})
-	local headerLogo
-	if logoUrl then
-		headerLogo = New("ImageLabel", {
-			Name = "HeaderLogo",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 11, 0.5, 0),
-			Size = UDim2.fromOffset(26, 26),
-			BackgroundTransparency = 1,
-			Image = logoUrl,
-			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 7,
-			Parent = Header,
-		})
-	else
-		headerLogo = MakeIcon(Header, opts.Logo or "bomb", 24, Theme.Text)
-		headerLogo.Name = "HeaderLogo"
-		headerLogo.AnchorPoint = Vector2.new(0, 0.5)
-		headerLogo.Position = UDim2.new(0, 11, 0.5, 0)
-		headerLogo.ZIndex = 7
-	end
-	bindTheme(function()
-		if headerLogo then
-			if headerLogo:IsA("ImageLabel") then
-				headerLogo.ImageColor3 = logoUrl and Theme.Accent or Theme.Text
-			elseif headerLogo:IsA("Frame") then
-				headerLogo.BackgroundColor3 = Theme.Text
-			end
-		end
-	end)
 	local titleLabel = New("TextLabel", {
 		Name = "Title",
-		Position = UDim2.new(0, 44, 0, 0),
-		Size = UDim2.new(0, 260, 1, 0),
+		Position = UDim2.new(0, 16, 0, 0),
+		Size = UDim2.new(0, 120, 1, 0),
 		BackgroundTransparency = 1,
 		Text = title,
 		Font = Enum.Font.GothamBold,
-		TextSize = 18,
+		TextSize = 16,
 		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
@@ -2035,30 +1973,6 @@ function Library:CreateWindow(opts)
 			gradT = (gradT + dt * 0.4) % 2
 			grad.Offset = Vector2.new(gradT - 1, 0)
 		end)
-	end
-	do
-		local sub = opts.Subtitle
-		if sub and tostring(sub) ~= "" then
-			titleLabel.Position = UDim2.new(0, 44, 0, 4)
-			titleLabel.Size = UDim2.new(0, 260, 0, 22)
-			titleLabel.TextSize = 17
-			local subtitleLabel = New("TextLabel", {
-				Position = UDim2.new(0, 44, 0, 26),
-				Size = UDim2.new(0, 260, 0, 14),
-				BackgroundTransparency = 1,
-				Text = tostring(sub),
-				FontFace = FONT_SEMIBOLD,
-				TextSize = 11,
-				TextColor3 = Theme.TextDim,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextTruncate = Enum.TextTruncate.AtEnd,
-				ZIndex = 7,
-				Parent = Header,
-			})
-			bindTheme(function()
-				subtitleLabel.TextColor3 = Theme.TextDim
-			end)
-		end
 	end
 	local headerDivider = New("Frame", {
 		Name = "TabDivider",
@@ -2440,7 +2354,6 @@ end
 	local panelScale = nil
 	local panelOpen = false
 	local syncPanelPosition = nil
-	local guiTabRef = nil
 	local setPanel = nil
 	local modal = nil
 	local closeModal = nil
@@ -2739,7 +2652,7 @@ end
 				dockScale.Scale = (visible and 1 or 0.96) * mobileScale
 			end
 			if panel then
-				panel.Visible = true
+				panel.Visible = visible and panelOpen
 				panel.GroupTransparency = visible and 0 or 1
 				panelScale.Scale = (visible and 1 or 0.96) * mobileScale
 				if visible and panelOpen and syncPanelPosition then syncPanelPosition() end
@@ -2788,9 +2701,12 @@ end
 					if not uiVisible and Dock and Dock.Parent then Dock.Visible = false end
 				end)
 			end
-			if panel then
-				panel.Visible = true
+			if panel and panel.Visible then
 				Tween(panel, TWEEN_MED, { GroupTransparency = 1 })
+				Tween(panelScale, TWEEN_MED, { Scale = 0.96 * mobileScale })
+				task.delay(0.24, function()
+					if not uiVisible and panel then panel.Visible = false end
+				end)
 			end
 			task.delay(0.24, function()
 				if not uiVisible then Main.Visible = false end
@@ -2815,21 +2731,11 @@ end
 				syncDockPosition()
 				Dock.Visible = uiVisible
 				Dock.GroupTransparency = uiVisible and 0 or 1
-				local logoIcon = Dock:FindFirstChild("LogoIcon")
-				if logoIcon then logoIcon.Visible = true end
-				local logoDivider = Dock:FindFirstChild("LogoDivider")
-				if logoDivider then logoDivider.Visible = true end
-				local sidebar = Dock:FindFirstChild("Sidebar")
-				if sidebar then
-					sidebar.Position = UDim2.new(0, 0, 0, DOCK.LOGO_H)
-					sidebar.Size = UDim2.new(1, 0, 1, -(DOCK.LOGO_H + DOCK.PROFILE_H))
-				end
 				Content.Position = UDim2.new(0, 18, 0, HEADER_H + 12)
 				Content.Size = UDim2.new(1, -36, 1, -(HEADER_H + 12))
 				Header.Position = UDim2.new(0, 0, 0, 0)
 				Header.Size = UDim2.new(1, 0, 0, HEADER_H)
 				if headerDivider then
-					headerDivider.Visible = true
 					headerDivider.Position = UDim2.new(0, 18, 0, HEADER_H - 6)
 					headerDivider.Size = UDim2.new(1, -36, 0, 12)
 				end
@@ -2838,31 +2744,22 @@ end
 				Dock.AnchorPoint = Vector2.new(0, 0)
 				Dock.Position = UDim2.new(0, 0, 0, 0)
 				Dock.BackgroundTransparency = 1
-				Dock.Size = UDim2.new(0, DOCK.LEGACY_W, 1, 0)
+				Dock.Size = UDim2.new(0, DOCK.W, 1, 0)
 				if dockStroke then dockStroke.Transparency = 1 end
 				if dockCorner then dockCorner.CornerRadius = UDim.new(0, 0) end
 				dockScale.Scale = 1
 				Dock.Visible = uiVisible
 				Dock.GroupTransparency = uiVisible and 0 or 1
-				local logoIcon = Dock:FindFirstChild("LogoIcon")
-				if logoIcon then logoIcon.Visible = false end
-				local logoDivider = Dock:FindFirstChild("LogoDivider")
-				if logoDivider then logoDivider.Visible = false end
-				local sidebar = Dock:FindFirstChild("Sidebar")
-				if sidebar then
-					sidebar.Position = UDim2.new(0, 0, 0, HEADER_H + 6)
-					sidebar.Size = UDim2.new(1, 0, 1, -(HEADER_H + 6 + DOCK.PROFILE_H))
-				end
-				Content.Position = UDim2.new(0, DOCK.LEGACY_W + 18, 0, HEADER_H + 12)
-				Content.Size = UDim2.new(1, -(DOCK.LEGACY_W + 36), 1, -(HEADER_H + 12))
-				Header.Position = UDim2.new(0, 0, 0, 0)
-				Header.Size = UDim2.new(1, 0, 0, HEADER_H)
+				Content.Position = UDim2.new(0, DOCK.W + 18, 0, HEADER_H + 12)
+				Content.Size = UDim2.new(1, -(DOCK.W + 36), 1, -(HEADER_H + 12))
+				Header.Position = UDim2.new(0, DOCK.W, 0, 0)
+				Header.Size = UDim2.new(1, -DOCK.W, 0, HEADER_H)
 				if headerDivider then
-					headerDivider.Visible = false
+					headerDivider.Position = UDim2.new(0, DOCK.W + 18, 0, HEADER_H - 6)
+					headerDivider.Size = UDim2.new(1, -(DOCK.W + 36), 0, 12)
 				end
 			end
 		end
-		ApplyTabLayout(tabs, modern)
 		if saveGlobalsSoon then saveGlobalsSoon() end
 	end
 	applyUIMode(uiMode)
@@ -5929,13 +5826,6 @@ local bellBtn = IconButton(head, 26)
 		end
 		local previous = currentTab
 		currentTab = tab
-		if guiTabRef then
-			local isGui = (tab == guiTabRef)
-			if panelOpen ~= isGui then
-				panelOpen = isGui
-				if hookPanelOpen then hookPanelOpen() end
-			end
-		end
 		dividerLabel.Text = tab and ("[ " .. tab.Name .. " ]") or ""
 		for _, t in ipairs(tabs) do
 			local selected = (t == tab)
@@ -5959,13 +5849,6 @@ local bellBtn = IconButton(head, 26)
 				BackgroundTransparency = selected and 0 or 1,
 			})
 			t.NameLabel.TextColor3 = Theme.TextSoft
-			if t.Label then
-				t.Label.TextColor3 = selected and Theme.Text or Theme.TextDim
-			end
-			if t.Indicator then
-				t.Indicator.BackgroundColor3 = Theme.Accent
-				t.Indicator.Visible = selected and uiMode ~= "Modern"
-			end
 			if t.IconRef then
 				if t.IconRef:IsA("ImageLabel") then
 					Tween(t.IconRef, TWEEN_FAST, { ImageColor3 = selected and Theme.Text or Theme.TextDim })
@@ -6020,31 +5903,6 @@ function Window:AddTab(tabOpts)
 		local iconRef = MakeIcon(button, iconKey, 18, Theme.TextDim)
 		iconRef.AnchorPoint = Vector2.new(0.5, 0.5)
 		iconRef.Position = UDim2.new(0.5, 0, 0.5, 0)
-		local indicator = New("Frame", {
-			Name = "Indicator",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 2, 0.5, 0),
-			Size = UDim2.fromOffset(3, 18),
-			BackgroundColor3 = Theme.Accent,
-			BorderSizePixel = 0,
-			Visible = false,
-			Parent = button,
-		})
-		Corner(indicator, 2)
-		local tabLabel = New("TextLabel", {
-			Name = "Label",
-			Position = UDim2.new(0, 36, 0.5, 0),
-			Size = UDim2.new(1, -44, 1, 0),
-			BackgroundTransparency = 1,
-			Text = Tab.Name,
-			FontFace = FONT_SEMIBOLD,
-			TextSize = 13,
-			TextColor3 = Theme.TextDim,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextTruncate = Enum.TextTruncate.AtEnd,
-			Visible = false,
-			Parent = button,
-		})
 		local nameLabel = New("TextLabel", {
 			Name = "Tip_" .. Tab.Name,
 			AnchorPoint = Vector2.new(0, 0.5),
@@ -6073,10 +5931,8 @@ function Window:AddTab(tabOpts)
 			nameLabel.Position = UDim2.new(0, dx, 0, dy)
 		end
 		button.MouseEnter:Connect(function()
-			if uiMode == "Modern" then
-				nameLabel.Visible = true
-				placeTip()
-			end
+			nameLabel.Visible = true
+			placeTip()
 		end)
 		button.MouseLeave:Connect(function()
 			nameLabel.Visible = false
@@ -6084,14 +5940,11 @@ function Window:AddTab(tabOpts)
 		Connect(button:GetPropertyChangedSignal("AbsolutePosition"), placeTip)
 		bindTheme(function()
 			local sel = (currentTab == Tab)
-			button.BackgroundColor3 = Theme.Accent:Lerp(Theme.Background, 0.72)
+			button.BackgroundColor3 = Theme.TabSelected
 			button.BackgroundTransparency = sel and 0 or 1
 			nameLabel.TextColor3 = Theme.TextSoft
 			nameLabel.BackgroundColor3 = Theme.Group
 			tipStroke.Color = Theme.GroupStroke
-			tabLabel.TextColor3 = sel and Theme.Text or Theme.TextDim
-			indicator.BackgroundColor3 = Theme.Accent
-			indicator.Visible = sel and uiMode ~= "Modern"
 			if iconRef:IsA("ImageLabel") then
 				iconRef.ImageColor3 = sel and Theme.Text or Theme.TextDim
 			elseif iconRef:IsA("Frame") then
@@ -6174,9 +6027,6 @@ function Window:AddTab(tabOpts)
 		Tab.Button = button
 		Tab.NameLabel = nameLabel
 		Tab.IconRef = iconRef
-		Tab.Label = tabLabel
-		Tab.Indicator = indicator
-		ApplyTabLayout({ Tab }, uiMode == "Modern")
 		Tab.Modules = {}
 		function Tab:AddModule(mOpts)
 			mOpts = mOpts or {}
@@ -6243,7 +6093,7 @@ function Window:AddTab(tabOpts)
 				selectTab(Tab)
 			end
 		end)
-		if not tabOpts.SuppressAutoSelect and currentTab == nil then
+		if #tabs == 1 then
 			selectTab(Tab, true)
 		end
 		return Tab
@@ -6493,12 +6343,12 @@ function Window:AddTab(tabOpts)
 		return lbl
 	end
 Window._searchBox = New("TextBox", {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -92, 0.5, 0),
-		Size = UDim2.fromOffset(176, 24),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.fromOffset(200, 24),
 		BackgroundColor3 = Theme.Control,
 		Text = "",
-		PlaceholderText = "Search...",
+		PlaceholderText = "Search for a module...",
 		FontFace = FONT_SEMIBOLD,
 		TextSize = 13,
 		TextColor3 = Theme.Text,
@@ -6508,15 +6358,11 @@ Window._searchBox = New("TextBox", {
 		Parent = Header,
 	})
 	Corner(Window._searchBox, 7)
-	Pad(Window._searchBox, 0, 0, 26, 8)
-	local searchIcon = MakeIcon(Header, "search", 14, Theme.TextDim)
-	searchIcon.AnchorPoint = Vector2.new(0, 0.5)
-	searchIcon.Position = UDim2.new(1, -258, 0.5, 0)
-	searchIcon.ZIndex = 9
+	Pad(Window._searchBox, 0, 0, 8, 8)
 	Window._searchResults = New("Frame", {
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -92, 1, 4),
-		Size = UDim2.fromOffset(176, 0),
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 4),
+		Size = UDim2.fromOffset(200, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = Theme.Background,
 		BackgroundTransparency = 0.05,
@@ -6591,13 +6437,6 @@ Window._searchBox = New("TextBox", {
 		end
 		if Window._searchResults and Window._searchResults.Parent then
 			Window._searchResults.BackgroundColor3 = Theme.Background
-		end
-		if searchIcon then
-			if searchIcon:IsA("ImageLabel") then
-				searchIcon.ImageColor3 = Theme.TextDim
-			elseif searchIcon:IsA("Frame") then
-				searchIcon.BackgroundColor3 = Theme.TextDim
-			end
 		end
 	end)
 	New("TextButton", {
@@ -6770,38 +6609,6 @@ local gearBtn = IconButton(Header, 28, 7)
 			end
 		end
 		hookPanelOpen = setGearSpin
-	end
-	do
-		local guiTab = Window:AddTab({ Name = "Gui", Icon = "cog", SuppressAutoSelect = true })
-		guiTab.Button.LayoutOrder = 9998
-		guiTabRef = guiTab
-		if guiTab.Page then
-			panel.Parent = guiTab.Page
-			panel.AnchorPoint = Vector2.new(0, 0)
-			panel.Position = UDim2.new(0, 0, 0, 0)
-			panel.Size = UDim2.new(1, 0, 1, 0)
-			panel.ZIndex = 2
-			panel.Active = false
-			panel.BackgroundTransparency = 1
-			panel.GroupTransparency = 0
-			panel.Visible = true
-		end
-		if panelEdgeDivider then panelEdgeDivider.Visible = false end
-		local panelStroke = panel:FindFirstChildOfClass("UIStroke")
-		if panelStroke then panelStroke.Transparency = 1 end
-		syncPanelPosition = function() end
-		if panelScale then panelScale.Scale = 1 end
-		setPanel = function(v)
-			v = v == true
-			if v == panelOpen then return end
-			if v then
-				selectTab(guiTab)
-			else
-				local target = tabs[1]
-				if target then selectTab(target) end
-			end
-			if hookPanelOpen then hookPanelOpen() end
-		end
 	end
 	local CONFIG_DIR = ConfigDir
 	local CONFIG_DEFAULT = "Default"

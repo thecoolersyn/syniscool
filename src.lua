@@ -2031,6 +2031,19 @@ function Library:CreateWindow(opts)
 			grad.Offset = Vector2.new(gradT - 1, 0)
 		end)
 	end
+	local sidebarDivider = New("Frame", {
+		Name = "SidebarDivider",
+		Position = UDim2.new(0, DOCK.LEGACY_W, 0, 0),
+		Size = UDim2.new(0, 1, 1, 0),
+		BackgroundColor3 = Theme.Divider,
+		BorderSizePixel = 0,
+		BackgroundTransparency = 0.5,
+		ZIndex = 6,
+		Parent = Main,
+	})
+	bindTheme(function()
+		sidebarDivider.BackgroundColor3 = Theme.Divider
+	end)
 	local headerDivider = New("Frame", {
 		Name = "TabDivider",
 		Position = UDim2.new(0, 18, 0, HEADER_H - 6),
@@ -2796,6 +2809,9 @@ end
 					headerDivider.Position = UDim2.new(0, 18, 0, HEADER_H - 6)
 					headerDivider.Size = UDim2.new(1, -36, 0, 12)
 				end
+				if sidebarDivider then
+					sidebarDivider.Visible = false
+				end
 			else
 				Dock.Parent = Main
 				Dock.AnchorPoint = Vector2.new(0, 0)
@@ -2813,6 +2829,10 @@ end
 				Header.Size = UDim2.new(1, -DOCK.LEGACY_W, 0, HEADER_H)
 				if headerDivider then
 					headerDivider.Visible = false
+				end
+				if sidebarDivider then
+					sidebarDivider.Visible = true
+					sidebarDivider.Position = UDim2.new(0, DOCK.LEGACY_W, 0, 0)
 				end
 			end
 		end

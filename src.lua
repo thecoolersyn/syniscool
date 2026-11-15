@@ -35,10 +35,10 @@ local THEMES = {
 		CardTransparency   = 0.45,
 		NotifyTransparency = 0.45,
 		TitleGradient = {
-			Color3.fromRGB(255, 64, 64),
-			Color3.fromRGB(150, 150, 155),
+			Color3.fromRGB(245, 245, 247),
+			Color3.fromRGB(160, 160, 165),
 			Color3.fromRGB(0, 0, 0),
-			Color3.fromRGB(255, 64, 64),
+			Color3.fromRGB(245, 245, 247),
 		},
 	},
 	Cobalt = {
@@ -1777,6 +1777,19 @@ function Library:CreateWindow(opts)
 	local mainStroke = Stroke(Main, Theme.GroupStroke, 0.4)
 	local accentStroke = Stroke(Main, Theme.Accent, 0.55)
 	accentStroke.Thickness = 2
+	local shadowUrl = loadThemeAsset("shadow.png")
+	local shadow = New("ImageLabel", {
+		Name = "Shadow",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(size.X.Scale, size.X.Offset + 36, size.Y.Scale, size.Y.Offset),
+		BackgroundTransparency = 1,
+		Image = shadowUrl,
+		ImageColor3 = Color3.new(0, 0, 0),
+		ImageTransparency = 0.55,
+		ZIndex = 0,
+		Parent = Gui,
+	})
 	local themeRefs = {}
 	local function bindTheme(fn)
 		themeRefs[#themeRefs + 1] = fn
@@ -1829,6 +1842,21 @@ function Library:CreateWindow(opts)
 	end)
 	local decorRefs = BuildThemeDecorations(Main, bindTheme)
 	local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
+	do
+		local shadowScale = New("UIScale", { Scale = uiScale.Scale, Parent = shadow })
+		Connect(Main:GetPropertyChangedSignal("Position"), function()
+			shadow.Position = Main.Position
+		end)
+		Connect(Main:GetPropertyChangedSignal("Size"), function()
+			shadow.Size = UDim2.new(Main.Size.X.Scale, Main.Size.X.Offset + 36, Main.Size.Y.Scale, Main.Size.Y.Offset)
+		end)
+		Connect(Main:GetPropertyChangedSignal("GroupTransparency"), function()
+			shadow.ImageTransparency = 0.55 + 0.45 * Main.GroupTransparency
+		end)
+		Connect(uiScale:GetPropertyChangedSignal("Scale"), function()
+			if shadow and shadowScale then shadowScale.Scale = uiScale.Scale end
+		end)
+	end
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
 	local DOCK = { W = 72, LEGACY_W = 140, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }

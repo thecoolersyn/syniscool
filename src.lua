@@ -925,6 +925,15 @@ local function BuildThemeDecorations(parent, bindTheme)
 		Parent = parent,
 	})
 	refs.layer = decor
+	local fg = New("Frame", {
+		Name = "DecorationsFront",
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		ZIndex = 50,
+		Parent = parent,
+	})
+	refs.front = fg
 	if hatUrl then
 		refs.hat = New("ImageLabel", {
 			Name = "HalloweenHat",
@@ -934,8 +943,8 @@ local function BuildThemeDecorations(parent, bindTheme)
 			BackgroundTransparency = 1,
 			Image = hatUrl,
 			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 0,
-			Parent = decor,
+			ZIndex = 50,
+			Parent = fg,
 		})
 	end
 	if webUrl then
@@ -949,8 +958,8 @@ local function BuildThemeDecorations(parent, bindTheme)
 			ImageColor3 = Color3.fromRGB(235, 235, 245),
 			ImageTransparency = 0.3,
 			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 0,
-			Parent = decor,
+			ZIndex = 50,
+			Parent = fg,
 		})
 	end
 	if bubbleUrl then
@@ -991,6 +1000,7 @@ local function BuildThemeDecorations(parent, bindTheme)
 		local on = halloween or glass
 		refs.active = on
 		decor.Visible = on
+		if refs.front then refs.front.Visible = halloween end
 		if refs.hat then refs.hat.Visible = halloween end
 		if refs.web then refs.web.Visible = halloween end
 		for _, b in ipairs(refs.bubbles) do b.Visible = on end

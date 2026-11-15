@@ -1244,6 +1244,7 @@ function Library:CreateWindow(opts)
 	local uiHomePos = UDim2.fromScale(0.5, 0.5)
 	local HEADER_H = 46
 	local DOCK = { W = 72, GAP = 14, LOGO_H = 56, PROFILE_H = 78 }
+	local uiMode = "Legacy"
 	local tabs = {}
 	local tabTooltips = {}
 	local Dock = New("CanvasGroup", {
@@ -1265,6 +1266,7 @@ function Library:CreateWindow(opts)
 	local dockScale = New("UIScale", { Scale = 0.96, Parent = Dock })
 	local DOCK_MIN_H = DOCK.LOGO_H + DOCK.PROFILE_H + 42
 	local function syncDockPosition()
+		if uiMode == "Legacy" then return end
 		if not (Dock and Dock.Parent) then return end
 		local mw = Main.Size.X.Offset
 		local mh = Main.Size.Y.Offset
@@ -2002,7 +2004,6 @@ end
 	local uiVisible = false
 	local destroyed = false
 	local mobileScale = 1
-	local uiMode = "Modern"
 	local lastViewportCam = nil
 	local viewportConn = nil
 	local updateMobileScale = nil
@@ -2119,7 +2120,7 @@ end
 			Main.Position = uiHomePos
 			if Dock and Dock.Parent then
 				syncDockPosition()
-				Dock.Visible = visible and (uiMode == "Modern")
+				Dock.Visible = visible
 				Dock.GroupTransparency = visible and 0 or 1
 				dockScale.Scale = (visible and 1 or 0.96) * mobileScale
 			end
@@ -2143,7 +2144,7 @@ end
 				uiHomePos.Y.Offset + 10)
 			if Dock and Dock.Parent then
 				syncDockPosition()
-				Dock.Visible = visible and (uiMode == "Modern")
+				Dock.Visible = visible
 				Dock.GroupTransparency = 1
 				Tween(Dock, TWEEN_OPEN, { GroupTransparency = 0 })
 				Tween(dockScale, TWEEN_OPEN, { Scale = mobileScale })
@@ -2188,11 +2189,53 @@ end
 	end
 	local function applyUIMode(mode)
 		uiMode = (mode == "Legacy") and "Legacy" or "Modern"
-		if Dock and Dock.Parent then
-			Dock.Visible = (uiMode == "Modern") and uiVisible
+		local modern = uiMode == "Modern"
+		if Dock then
+			local dockStroke = Dock:FindFirstChildOfClass("UIStroke")
+			local dockCorner = Dock:FindFirstChildOfClass("UICorner")
+			if modern then
+				Dock.Parent = Gui
+				Dock.AnchorPoint = Vector2.new(0, 0)
+				Dock.BackgroundTransparency = 0.15
+				Dock.Size = UDim2.fromOffset(DOCK.W, 460)
+				if dockStroke then dockStroke.Transparency = 0.4 end
+				if dockCorner then dockCorner.CornerRadius = UDim.new(0, 12) end
+				dockScale.Scale = 0.96 * (mobileScale or 1)
+				syncDockPosition()
+				Dock.Visible = uiVisible
+				Dock.GroupTransparency = uiVisible and 0 or 1
+				Content.Position = UDim2.new(0, 18, 0, HEADER_H + 12)
+				Content.Size = UDim2.new(1, -36, 1, -(HEADER_H + 12))
+				Header.Position = UDim2.new(0, 0, 0, 0)
+				Header.Size = UDim2.new(1, 0, 0, HEADER_H)
+				if headerDivider then
+					headerDivider.Position = UDim2.new(0, 18, 0, HEADER_H - 6)
+					headerDivider.Size = UDim2.new(1, -36, 0, 12)
+				end
+			else
+				Dock.Parent = Main
+				Dock.AnchorPoint = Vector2.new(0, 0)
+				Dock.Position = UDim2.new(0, 0, 0, 0)
+				Dock.BackgroundTransparency = 1
+				Dock.Size = UDim2.new(0, DOCK.W, 1, 0)
+				if dockStroke then dockStroke.Transparency = 1 end
+				if dockCorner then dockCorner.CornerRadius = UDim.new(0, 0) end
+				dockScale.Scale = 1
+				Dock.Visible = uiVisible
+				Dock.GroupTransparency = uiVisible and 0 or 1
+				Content.Position = UDim2.new(0, DOCK.W + 18, 0, HEADER_H + 12)
+				Content.Size = UDim2.new(1, -(DOCK.W + 36), 1, -(HEADER_H + 12))
+				Header.Position = UDim2.new(0, DOCK.W, 0, 0)
+				Header.Size = UDim2.new(1, -DOCK.W, 0, HEADER_H)
+				if headerDivider then
+					headerDivider.Position = UDim2.new(0, DOCK.W + 18, 0, HEADER_H - 6)
+					headerDivider.Size = UDim2.new(1, -(DOCK.W + 36), 0, 12)
+				end
+			end
 		end
 		if saveGlobalsSoon then saveGlobalsSoon() end
 	end
+	applyUIMode(uiMode)
 	do
 		local FB_SIZE = 48
 		local FB_THRESHOLD = 6

@@ -35,10 +35,10 @@ local THEMES = {
 		CardTransparency   = 0.45,
 		NotifyTransparency = 0.45,
 		TitleGradient = {
-			Color3.fromRGB(245, 245, 247),
-			Color3.fromRGB(160, 160, 165),
+			Color3.fromRGB(255, 64, 64),
+			Color3.fromRGB(150, 150, 155),
 			Color3.fromRGB(0, 0, 0),
-			Color3.fromRGB(245, 245, 247),
+			Color3.fromRGB(255, 64, 64),
 		},
 	},
 	Cobalt = {
